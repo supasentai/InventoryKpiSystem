@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("InventoryKpiSystem")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+71011f71a14032a1923ff60ae3acd8d2e434c7a0")]
 [assembly: System.Reflection.AssemblyProductAttribute("InventoryKpiSystem")]
 [assembly: System.Reflection.AssemblyTitleAttribute("InventoryKpiSystem")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
