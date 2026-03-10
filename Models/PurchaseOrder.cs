@@ -5,19 +5,19 @@ namespace InventoryKpiSystem.Models
 {
     public class PurchaseOrder
     {
-        [JsonPropertyName("order_id")]
-        public string OrderId { get; set; }
+        [JsonPropertyName("orderId")]
+        public string OrderId { get; set; } = string.Empty;
 
-        [JsonPropertyName("product_id")]
-        public string ProductId { get; set; }
+        [JsonPropertyName("productId")]
+        public string ProductId { get; set; } = string.Empty;
 
-        [JsonPropertyName("quantity_purchased")]
+        [JsonPropertyName("quantity")]
         public int Quantity { get; set; }
 
-        [JsonPropertyName("unit_cost")]
+        [JsonPropertyName("unitCost")]
         public decimal UnitCost { get; set; }
 
-        [JsonPropertyName("purchase_date")]
+        [JsonPropertyName("purchaseDate")]
         public DateTime PurchaseDate { get; set; }
     }
 }
