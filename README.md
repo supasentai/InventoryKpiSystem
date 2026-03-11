@@ -19,7 +19,7 @@ All development must be done through feature branches.
 # Repository Setup
 
 Clone the repository:
-git clone https://github.com/YOUR_USERNAME/InventoryKpiSystem.git
+git clone https://github.com/supasentai/InventoryKpiSystem.git
 
 Enter the project directory:
 cd InventoryKpiSystem
@@ -100,7 +100,7 @@ Before merging a Pull Request:
 
 # Project Timeline
 
-### Week 1
+### Phase 1
 
 Project setup
 
@@ -109,21 +109,21 @@ Project setup
 - Data models
 - JSON parsing
 
-### Week 2
+### Phase 2
 
 Core system development
 
 - Inventory state management
 - KPI calculation engine
 
-### Week 3
+### Phase 3
 
 Real-time data processing
 
 - File monitoring
 - Asynchronous processing queue
 
-### Week 4
+### Phase 4
 
 System completion
 
