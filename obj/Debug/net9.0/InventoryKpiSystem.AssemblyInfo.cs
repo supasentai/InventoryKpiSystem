@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("InventoryKpiSystem")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6664bc04c9ed4b31b4eab5d8334b8fc829c4aaaa")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+45768fd3a4801e9ee96a87ebf64896babab9e27b")]
 [assembly: System.Reflection.AssemblyProductAttribute("InventoryKpiSystem")]
 [assembly: System.Reflection.AssemblyTitleAttribute("InventoryKpiSystem")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
