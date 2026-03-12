@@ -7,16 +7,17 @@ namespace InventoryKpiSystem.Services.Inventory
 {
     public class InventoryState
     {
-        private readonly ConcurrentDictionary<string, ProductInventory> _inventory;
+        private readonly ConcurrentDictionary<string, ProductInventory> _inventory;        
+        private readonly ConcurrentDictionary<DateTime, byte> _salesDays;
 
         public InventoryState()
         {
             _inventory = new ConcurrentDictionary<string, ProductInventory>();
+            _salesDays = new ConcurrentDictionary<DateTime, byte>();
         }
 
         public void AddPurchase(string productId, int quantity, decimal unitCost, DateTime purchaseDate)
         {
-
             var product = _inventory.GetOrAdd(productId, id => new ProductInventory { ProductId = id });
 
             lock (product)
@@ -27,8 +28,10 @@ namespace InventoryKpiSystem.Services.Inventory
             }
         }
 
-        public void AddSale(string productId, int quantity)
+        public void AddSale(string productId, int quantity, DateTime invoiceDate)
         {
+            _salesDays.TryAdd(invoiceDate.Date, byte.MinValue);
+
             var product = _inventory.GetOrAdd(productId, id => new ProductInventory { ProductId = id });
 
             lock (product)
@@ -41,5 +44,6 @@ namespace InventoryKpiSystem.Services.Inventory
         {
             return _inventory;
         }
+
     }
 }
