@@ -16,7 +16,6 @@ namespace InventoryKpiSystem.Services.KPI
                 .Count();
         }
 
-
         public decimal GetStockValue(List<ProductInventory> inventories)
         {
             return inventories
@@ -45,13 +44,16 @@ namespace InventoryKpiSystem.Services.KPI
         public double GetAverageInventoryAge(List<ProductInventory> inventories)
         {
             var unsoldItems = inventories
-                .Where(i => (i.PurchasedQuantity - i.SoldQuantity) > 0);
+                .Where(i => (i.PurchasedQuantity - i.SoldQuantity) > 0)
+                .ToList();
 
             if (!unsoldItems.Any())
                 return 0;
 
             return unsoldItems
-                .Average(i => (DateTime.Now - i.PurchaseDate).TotalDays);
+                .Average(i => i.PurchaseDates.Any() 
+                    ? i.PurchaseDates.Average(date => (DateTime.Now - date).TotalDays) 
+                    : 0);
         }
 
     }
