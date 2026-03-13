@@ -1,24 +1,27 @@
 using System;
 using System.Collections.Generic;
-using System.Text.Json.Serialization;
 
 namespace InventoryKpiSystem.Models
 {
     public class ProductInventory
     {
-        [JsonPropertyName("productId")]
-        public string ProductId { get; set; } = string.Empty;
+        public string ProductId { get; set; } = "";
+        public string ItemCode { get; set; } = "";
+        public string Name { get; set; } = "";
 
-        [JsonPropertyName("purchasedQuantity")]
         public int PurchasedQuantity { get; set; }
 
-        [JsonPropertyName("soldQuantity")]
         public int SoldQuantity { get; set; }
 
-        [JsonPropertyName("unitCost")]
+        // Quantity currently in stock
+        public int QuantityOnHand { get; set; }
+
         public decimal UnitCost { get; set; }
 
-        [JsonPropertyName("purchaseDates")]
-        public List<DateTime> PurchaseDates { get; set; } = new List<DateTime>();
+        public List<DateTime> PurchaseDates { get; set; } = new();
+    }
+    public class ProductResponse
+    {
+        public List<ProductInventory> Items { get; set; }
     }
 }

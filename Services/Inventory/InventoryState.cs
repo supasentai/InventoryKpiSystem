@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using InventoryKpiSystem.Models;
 
@@ -7,43 +6,39 @@ namespace InventoryKpiSystem.Services.Inventory
 {
     public class InventoryState
     {
-        private readonly ConcurrentDictionary<string, ProductInventory> _inventory;        
-        private readonly ConcurrentDictionary<DateTime, byte> _salesDays;
+        public Dictionary<string, ProductInventory> Products { get; set; }
 
         public InventoryState()
         {
-            _inventory = new ConcurrentDictionary<string, ProductInventory>();
-            _salesDays = new ConcurrentDictionary<DateTime, byte>();
+            Products = new Dictionary<string, ProductInventory>();
         }
 
-        public void AddPurchase(string productId, int quantity, decimal unitCost, DateTime purchaseDate)
+        public void AddPurchase(string productId, int quantity, decimal unitCost, DateTime date)
         {
-            var product = _inventory.GetOrAdd(productId, id => new ProductInventory { ProductId = id });
-
-            lock (product)
+            if (!Products.ContainsKey(productId))
             {
-                product.PurchasedQuantity += quantity; 
-                product.UnitCost = unitCost;          
-                product.PurchaseDates.Add(purchaseDate);
+                Products[productId] = new ProductInventory
+                {
+                    ProductId = productId,
+                    UnitCost = unitCost
+                };
             }
+
+            Products[productId].PurchasedQuantity += quantity;
+            Products[productId].PurchaseDates.Add(date);
         }
 
-        public void AddSale(string productId, int quantity, DateTime invoiceDate)
+        public void AddSale(string productId, int quantity, DateTime date)
         {
-            _salesDays.TryAdd(invoiceDate.Date, byte.MinValue);
-
-            var product = _inventory.GetOrAdd(productId, id => new ProductInventory { ProductId = id });
-
-            lock (product)
+            if (!Products.ContainsKey(productId))
             {
-                product.SoldQuantity += quantity;
+                Products[productId] = new ProductInventory
+                {
+                    ProductId = productId
+                };
             }
-        }
 
-        public IReadOnlyDictionary<string, ProductInventory> GetAllInventory()
-        {
-            return _inventory;
+            Products[productId].SoldQuantity += quantity;
         }
-
     }
 }

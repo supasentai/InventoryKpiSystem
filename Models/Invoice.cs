@@ -1,23 +1,38 @@
 using System;
-using System.Text.Json.Serialization;
+using System.Collections.Generic;
 
 namespace InventoryKpiSystem.Models
 {
     public class Invoice
     {
-        [JsonPropertyName("invoiceId")]
-        public string InvoiceId { get; set; } = string.Empty;
+        public string InvoiceID { get; set; } = "";
+        public string InvoiceNumber { get; set; } = "";
 
-        [JsonPropertyName("productId")]
-        public string ProductId { get; set; } = string.Empty;
+        // ACCREC = sales invoice
+        // ACCPAY = purchase invoice
+        public string Type { get; set; } = "";
 
-        [JsonPropertyName("quantity")]
+        public string ContactName { get; set; } = "";
+
+        public DateTime Date { get; set; }
+
+        public List<InvoiceLine> LineItems { get; set; } = new List<InvoiceLine>();
+
+        // These properties are used by FileProcessor
+        public string ProductId { get; set; } = "";
+        public int Quantity { get; set; }
+        public decimal UnitCost { get; set; }
+        public DateTime InvoiceDate { get; set; }
+    }
+
+    public class InvoiceLine
+    {
+        public string ItemCode { get; set; } = "";
+
         public int Quantity { get; set; }
 
-        [JsonPropertyName("unitPrice")]
-        public decimal UnitPrice { get; set; }
+        public decimal UnitAmount { get; set; }
 
-        [JsonPropertyName("invoiceDate")]
-        public DateTime InvoiceDate { get; set; }
+        public decimal LineAmount { get; set; }
     }
 }

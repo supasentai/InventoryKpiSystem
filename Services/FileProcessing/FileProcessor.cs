@@ -63,7 +63,25 @@ namespace InventoryKpiSystem.Services.FileProcessing
                 _logger.LogInformation($"Processing Invoices: {fileName}");
                 await foreach (var inv in _loader.LoadInvoicesAsync(filePath, token))
                 {
-                    _state.AddSale(inv.ProductId, inv.Quantity, inv.InvoiceDate); 
+                    if (inv.Type == "ACCPAY")
+                    {
+                        // Purchase order
+                        _state.AddPurchase(
+                            inv.ProductId,
+                            inv.Quantity,
+                            inv.UnitCost,
+                            inv.InvoiceDate
+                        );
+                    }
+                    else if (inv.Type == "ACCREC")
+                    {
+                        // Sales invoice
+                        _state.AddSale(
+                            inv.ProductId,
+                            inv.Quantity,
+                            inv.InvoiceDate
+                        );
+                    }
                 }
                 _logger.LogInformation($"Successfully updated inventory from: {fileName}");
             }
