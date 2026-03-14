@@ -16,13 +16,13 @@ namespace InventoryKpiSystem.Services.Reporting
         private void PrintToConsole(KpiReport report)
         {
             Console.WriteLine("=================================");
-            Console.WriteLine("        KPI REPORT");
-            Console.WriteLine("=================================");
-            Console.WriteLine($"Total SKUs: {report.TotalSkus}");
-            Console.WriteLine($"Inventory Value: {report.InventoryValue}");
-            Console.WriteLine($"Out-of-Stock Items: {report.OutOfStockItems}");
-            Console.WriteLine($"Average Daily Sales: {report.AverageDailySales}");
-            Console.WriteLine($"Average Inventory Age: {report.AverageInventoryAge}");
+            Console.WriteLine("           KPI REPORT");
+            Console.WriteLine("=================================");         
+            Console.WriteLine($"Total SKUs:             {report.TotalSkus:N0}units");
+            Console.WriteLine($"Inventory Value:        ${report.InventoryValue:N2}");
+            Console.WriteLine($"Out-of-Stock Items:     {report.OutOfStockItems:N0}");
+            Console.WriteLine($"Average Daily Sales:    {report.AverageDailySales:N2} units/day");
+            Console.WriteLine($"Average Inventory Age:  {report.AverageInventoryAge:N2} days");           
             Console.WriteLine("=================================");
         }
 

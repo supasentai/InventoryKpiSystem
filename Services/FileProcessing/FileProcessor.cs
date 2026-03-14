@@ -63,24 +63,28 @@ namespace InventoryKpiSystem.Services.FileProcessing
                 _logger.LogInformation($"Processing Invoices: {fileName}");
                 await foreach (var inv in _loader.LoadInvoicesAsync(filePath, token))
                 {
-                    if (inv.Type == "ACCPAY")
+                    // LẶP QUA TỪNG SẢN PHẨM TRONG HÓA ĐƠN
+                    foreach (var line in inv.LineItems)
                     {
-                        // Purchase order
-                        _state.AddPurchase(
-                            inv.ProductId,
-                            inv.Quantity,
-                            inv.UnitCost,
-                            inv.InvoiceDate
-                        );
-                    }
-                    else if (inv.Type == "ACCREC")
-                    {
-                        // Sales invoice
-                        _state.AddSale(
-                            inv.ProductId,
-                            inv.Quantity,
-                            inv.InvoiceDate
-                        );
+                        if (inv.Type == "ACCPAY")
+                        {
+                            // ACCPAY = Purchase Order (Nhập kho)
+                            _state.AddPurchase(
+                                line.ItemCode,     // Lấy mã SP từ LineItems
+                                (int)line.Quantity,     // Lấy số lượng từ LineItems
+                                line.UnitAmount,   // Lấy giá từ LineItems
+                                inv.Date           // Lấy ngày lập hóa đơn
+                            );
+                        }
+                        else if (inv.Type == "ACCREC")
+                        {
+                            // ACCREC = Sales Invoice (Xuất kho)
+                            _state.AddSale(
+                                line.ItemCode,     // Lấy mã SP từ LineItems
+                                (int)line.Quantity,     // Lấy số lượng từ LineItems
+                                inv.Date           // Lấy ngày lập hóa đơn
+                            );
+                        }
                     }
                 }
                 _logger.LogInformation($"Successfully updated inventory from: {fileName}");

@@ -19,13 +19,17 @@ namespace InventoryKpiSystem.Services.Inventory
             {
                 Products[productId] = new ProductInventory
                 {
-                    ProductId = productId,
-                    UnitCost = unitCost
+                    ProductId = productId
                 };
             }
 
+            // Cập nhật số lượng nhập và ngày nhập
             Products[productId].PurchasedQuantity += quantity;
             Products[productId].PurchaseDates.Add(date);
+
+            // ĐÃ SỬA: Luôn luôn cập nhật giá vốn (UnitCost) từ hóa đơn nhập hàng mới nhất!
+            // Dù là sản phẩm mới hay cũ thì khi nhập hàng cũng phải ghi nhận lại giá.
+            Products[productId].UnitCost = unitCost;
         }
 
         public void AddSale(string productId, int quantity, DateTime date)
@@ -39,6 +43,7 @@ namespace InventoryKpiSystem.Services.Inventory
             }
 
             Products[productId].SoldQuantity += quantity;
+            Products[productId].SaleDates.Add(date);
         }
     }
 }
