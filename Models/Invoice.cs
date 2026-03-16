@@ -14,7 +14,6 @@ namespace InventoryKpiSystem.Models
         
         public string ContactName { get; set; } = "";
 
-        // BÍ QUYẾT LÀ ĐÂY: Bảo C# lấy dữ liệu sạch từ trường "DateString" của JSON
         [JsonPropertyName("DateString")]
         public DateTime Date { get; set; }
 

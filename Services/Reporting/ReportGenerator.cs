@@ -22,7 +22,7 @@ namespace InventoryKpiSystem.Services.Reporting
             Console.WriteLine($"Inventory Value:        ${report.InventoryValue:N2}");
             Console.WriteLine($"Out-of-Stock Items:     {report.OutOfStockItems:N0}");
             Console.WriteLine($"Average Daily Sales:    {report.AverageDailySales:N2} units/day");
-            Console.WriteLine($"Average Inventory Age:  {report.AverageInventoryAge:N2} days");           
+            Console.WriteLine($"Average Inventory Age:  {report.AverageInventoryAge:N0} days");           
             Console.WriteLine("=================================");
         }
 
