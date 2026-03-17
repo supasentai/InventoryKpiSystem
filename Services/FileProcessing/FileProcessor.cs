@@ -43,7 +43,10 @@ namespace InventoryKpiSystem.Services.FileProcessing
                             if (invoice.LineItems == null) continue;
 
                             foreach (var line in invoice.LineItems)
+
                             {
+                                if (string.IsNullOrWhiteSpace(line.ItemCode)) continue;
+
                                 int qty = (int)line.Quantity;
 
                                 // 2. PHÂN LOẠI INVOICE

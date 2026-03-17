@@ -3,12 +3,14 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using InventoryKpiSystem.Models;
+using InventoryKpiSystem.DTOs; // Thêm thư viện chứa KpiResult
 using InventoryKpiSystem.Services.Inventory;
 using InventoryKpiSystem.Services.KPI;
 using System.Threading.Tasks;
 using InventoryKpiSystem.Services.FileProcessing;
 using InventoryKpiSystem.Services.FileMonitoring;
 using InventoryKpiSystem.Services.Idempotency;
+using InventoryKpiSystem.Services.Reporting; // Thêm thư viện chứa ReportGenerator
 
 Console.WriteLine("=================================================");
 Console.WriteLine("    INVENTORY KPI SYSTEM - REAL-TIME SERVICE");
@@ -31,27 +33,30 @@ var inventoryState = new InventoryState();
 var kpiEngine = new KpiEngine();
 
 // KHỞI TẠO CÁC DỊCH VỤ ĐÃ ĐƯỢC CHIA TÁCH
-// 1. Thêm Registry để lưu lịch sử file (chống trùng lặp - Idempotency)
 var fileRegistry = new ProcessedFileRegistry();
-
-// 2. Truyền Registry vào FileProcessor
 var fileProcessor = new FileProcessor(inventoryState, jsonOptions, fileRegistry);
 
-// Hàm in báo cáo (Gói gọn vào 1 Action để truyền qua cho MonitorService)
+// 1. Khởi tạo ReportGenerator
+var reportGenerator = new ReportGenerator();
+
+// Hàm in báo cáo (Đã được nâng cấp để dùng ReportGenerator và KpiResult)
 Action printReport = () =>
 {
-    // Sử dụng hàm GetAllInventory() đã được tối ưu cho ConcurrentDictionary
     var inventories = inventoryState.GetAllInventory();
 
-    Console.WriteLine("=================================");
-    Console.WriteLine($" KPI REPORT (As of {DateTime.Now:HH:mm:ss})");
-    Console.WriteLine("=================================");
-    Console.WriteLine($"Total SKUs:             {kpiEngine.GetTotalSkus(inventories):N0}");
-    Console.WriteLine($"Inventory Value:        ${kpiEngine.GetStockValue(inventories):N2}");
-    Console.WriteLine($"Out-of-Stock Items:     {kpiEngine.GetOutOfStockItems(inventories):N0}");
-    Console.WriteLine($"Average Daily Sales:    {kpiEngine.GetAverageDailySales(inventories):N2} units/day");
-    Console.WriteLine($"Average Inventory Age:  {kpiEngine.GetAverageInventoryAge(inventories):N2} days");
-    Console.WriteLine("=================================");
+    // 2. Đóng gói dữ liệu tính toán được vào DTO KpiResult
+    var kpiResult = new KpiResult
+    {
+        GeneratedAt = DateTime.Now,
+        TotalSkus = kpiEngine.GetTotalSkus(inventories),
+        InventoryValue = kpiEngine.GetStockValue(inventories),
+        OutOfStockItems = kpiEngine.GetOutOfStockItems(inventories),
+        AverageDailySales = kpiEngine.GetAverageDailySales(inventories),
+        AverageInventoryAge = kpiEngine.GetAverageInventoryAge(inventories)
+    };
+
+    // 3. Giao nhiệm vụ in màn hình và xuất file JSON cho ReportGenerator
+    reportGenerator.GenerateReport(kpiResult);
 };
 
 // 1. NẠP DỮ LIỆU SẢN PHẨM BAN ĐẦU
@@ -63,7 +68,7 @@ if (File.Exists(productPath))
     if (response?.Items != null)
     {
         foreach (var p in response.Items)
-            inventoryState.Products[p.ItemCode] = p; // Cập nhật an toàn vào ConcurrentDictionary
+            inventoryState.Products[p.ItemCode] = p;
     }
 }
 

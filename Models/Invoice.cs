@@ -12,7 +12,6 @@ namespace InventoryKpiSystem.Models
 
         public string Type { get; set; } = ""; // Chứa ACCPAY hoặc ACCREC
 
-        // Map DateString vào biến Date, ĐỒNG THỜI phớt lờ thuộc tính Date nguyên gốc của Xero
         [JsonPropertyName("DateString")]
         public DateTime Date { get; set; }
 
