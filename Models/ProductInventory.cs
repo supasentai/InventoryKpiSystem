@@ -30,6 +30,9 @@ namespace InventoryKpiSystem.Models
 
         [JsonIgnore]
         public List<DateTime> SaleDates { get; set; } = new();
+        public decimal QuantityOnHand => Math.Max(0, PurchasedQuantity - SoldQuantity);
+
+
     }
 
     public class ProductResponse

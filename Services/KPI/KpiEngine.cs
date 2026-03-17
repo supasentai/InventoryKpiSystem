@@ -14,15 +14,15 @@ namespace InventoryKpiSystem.Services.KPI
 
         public decimal GetStockValue(List<ProductInventory> inventories)
         {
-            return inventories.Sum(i => 
-                Math.Max(0, i.PurchasedQuantity - i.SoldQuantity) * i.UnitCost);
+            return inventories
+                .Where(p => p.QuantityOnHand > 0) // Chỉ lấy các mặt hàng có Tồn kho > 0
+                .Sum(p => p.QuantityOnHand * p.UnitCost); // Nhân số lượng với đơn giá và cộng tổng
         }
 
         public int GetOutOfStockItems(List<ProductInventory> inventories)
         {
             return inventories.Count(i =>
-                // ĐỔI THÀNH && VÀ BỎ i.SoldQuantity: Chỉ đếm những hàng hóa CÓ LỊCH SỬ NHẬP KHO (Loại trừ 100% dịch vụ)
-                i.PurchasedQuantity > 0 &&
+                ( i.PurchasedQuantity > 0 || i.SoldQuantity > 0) &&      // Có lịch sử giao dịch (Nhập hoặc Bán)
                 (i.PurchasedQuantity - i.SoldQuantity) <= 0);      // Và lượng tồn kho chạm đáy (<=0)
         }
 

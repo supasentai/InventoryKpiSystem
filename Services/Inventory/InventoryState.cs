@@ -16,7 +16,6 @@ namespace InventoryKpiSystem.Services.Inventory
             // Thao tác nguyên tử: Lấy ra hoặc tạo mới nếu chưa có
             var product = Products.GetOrAdd(itemCode, id => new ProductInventory { ItemCode = id, ProductId = Guid.NewGuid().ToString() });
 
-            // Chỉ khóa đúng sản phẩm đang được cập nhật
             lock (product)
             {
                 product.PurchasedQuantity += quantity;
