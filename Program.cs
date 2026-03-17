@@ -5,18 +5,19 @@ using System.Text.Json;
 using InventoryKpiSystem.Models;
 using InventoryKpiSystem.Services.Inventory;
 using InventoryKpiSystem.Services.KPI;
-using System.Threading.Tasks; 
+using System.Threading.Tasks;
 using InventoryKpiSystem.Services.FileProcessing;
 using InventoryKpiSystem.Services.FileMonitoring;
+using InventoryKpiSystem.Services.Idempotency;
 
 Console.WriteLine("=================================================");
 Console.WriteLine("    INVENTORY KPI SYSTEM - REAL-TIME SERVICE");
 Console.WriteLine("=================================================");
 
-var basePath = Directory.GetCurrentDirectory(); 
+var basePath = Directory.GetCurrentDirectory();
 var productPath = Path.Combine(basePath, "Data", "product.txt");
 var invoicesFolder = Path.Combine(basePath, "Data", "Invoices");
-var productsFolder = Path.Combine(basePath, "Data", "Product"); 
+var productsFolder = Path.Combine(basePath, "Data", "Product");
 
 if (!Directory.Exists(invoicesFolder)) Directory.CreateDirectory(invoicesFolder);
 if (!Directory.Exists(productsFolder)) Directory.CreateDirectory(productsFolder);
@@ -30,12 +31,18 @@ var inventoryState = new InventoryState();
 var kpiEngine = new KpiEngine();
 
 // KHỞI TẠO CÁC DỊCH VỤ ĐÃ ĐƯỢC CHIA TÁCH
-var fileProcessor = new FileProcessor(inventoryState, jsonOptions);
+// 1. Thêm Registry để lưu lịch sử file (chống trùng lặp - Idempotency)
+var fileRegistry = new ProcessedFileRegistry();
+
+// 2. Truyền Registry vào FileProcessor
+var fileProcessor = new FileProcessor(inventoryState, jsonOptions, fileRegistry);
 
 // Hàm in báo cáo (Gói gọn vào 1 Action để truyền qua cho MonitorService)
 Action printReport = () =>
 {
-    var inventories = inventoryState.Products.Values.ToList();
+    // Sử dụng hàm GetAllInventory() đã được tối ưu cho ConcurrentDictionary
+    var inventories = inventoryState.GetAllInventory();
+
     Console.WriteLine("=================================");
     Console.WriteLine($" KPI REPORT (As of {DateTime.Now:HH:mm:ss})");
     Console.WriteLine("=================================");
@@ -56,7 +63,7 @@ if (File.Exists(productPath))
     if (response?.Items != null)
     {
         foreach (var p in response.Items)
-            inventoryState.Products[p.ItemCode] = p;
+            inventoryState.Products[p.ItemCode] = p; // Cập nhật an toàn vào ConcurrentDictionary
     }
 }
 

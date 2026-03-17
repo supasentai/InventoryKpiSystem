@@ -1,49 +1,45 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using InventoryKpiSystem.Models;
 
 namespace InventoryKpiSystem.Services.Inventory
 {
     public class InventoryState
     {
-        public Dictionary<string, ProductInventory> Products { get; set; }
+        // Sử dụng ConcurrentDictionary để an toàn trong môi trường đa luồng
+        public ConcurrentDictionary<string, ProductInventory> Products { get; } = new();
 
-        public InventoryState()
+        public void AddPurchase(string itemCode, int quantity, decimal unitCost, DateTime date)
         {
-            Products = new Dictionary<string, ProductInventory>();
+            // Thao tác nguyên tử: Lấy ra hoặc tạo mới nếu chưa có
+            var product = Products.GetOrAdd(itemCode, id => new ProductInventory { ItemCode = id, ProductId = Guid.NewGuid().ToString() });
+
+            // Chỉ khóa đúng sản phẩm đang được cập nhật
+            lock (product)
+            {
+                product.PurchasedQuantity += quantity;
+                product.PurchaseDates.Add(date);
+                product.UnitCost = unitCost;
+            }
         }
 
-        public void AddPurchase(string productId, int quantity, decimal unitCost, DateTime date)
+        public void AddSale(string itemCode, int quantity, DateTime date)
         {
-            if (!Products.ContainsKey(productId))
+            var product = Products.GetOrAdd(itemCode, id => new ProductInventory { ItemCode = id, ProductId = Guid.NewGuid().ToString() });
+
+            lock (product)
             {
-                Products[productId] = new ProductInventory
-                {
-                    ProductId = productId
-                };
+                product.SoldQuantity += quantity;
+                product.SaleDates.Add(date);
             }
-
-            // Cập nhật số lượng nhập và ngày nhập
-            Products[productId].PurchasedQuantity += quantity;
-            Products[productId].PurchaseDates.Add(date);
-
-            // ĐÃ SỬA: Luôn luôn cập nhật giá vốn (UnitCost) từ hóa đơn nhập hàng mới nhất!
-            // Dù là sản phẩm mới hay cũ thì khi nhập hàng cũng phải ghi nhận lại giá.
-            Products[productId].UnitCost = unitCost;
         }
 
-        public void AddSale(string productId, int quantity, DateTime date)
+        // Cung cấp hàm lấy toàn bộ danh sách để KpiEngine tính toán
+        public List<ProductInventory> GetAllInventory()
         {
-            if (!Products.ContainsKey(productId))
-            {
-                Products[productId] = new ProductInventory
-                {
-                    ProductId = productId
-                };
-            }
-
-            Products[productId].SoldQuantity += quantity;
-            Products[productId].SaleDates.Add(date);
+            return Products.Values.ToList();
         }
     }
 }

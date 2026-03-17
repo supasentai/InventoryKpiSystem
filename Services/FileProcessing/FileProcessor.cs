@@ -1,11 +1,10 @@
 using System;
-using System.Collections.Generic; // Để dùng HashSet
 using System.IO;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks; // Để dùng Async/Await
+using System.Threading.Tasks;
 using InventoryKpiSystem.Models;
 using InventoryKpiSystem.Services.Inventory;
+using InventoryKpiSystem.Services.Idempotency;
 
 namespace InventoryKpiSystem.Services.FileProcessing
 {
@@ -13,70 +12,73 @@ namespace InventoryKpiSystem.Services.FileProcessing
     {
         private readonly InventoryState _state;
         private readonly JsonSerializerOptions _options;
-        
-        // BỔ SUNG CƠ CHẾ CHỐNG TRÙNG FILE (Prevent duplicate processing)
-        private readonly HashSet<string> _processedFiles = new();
+        private readonly ProcessedFileRegistry _registry;
 
-        public FileProcessor(InventoryState state, JsonSerializerOptions options)
+        // Tiêm Registry vào qua Constructor
+        public FileProcessor(InventoryState state, JsonSerializerOptions options, ProcessedFileRegistry registry)
         {
             _state = state;
             _options = options;
+            _registry = registry;
         }
 
-        // BỔ SUNG CƠ CHẾ BẤT ĐỒNG BỘ (Async File I/O)
         public async Task ProcessInvoiceFileAsync(string filePath)
         {
             var fileName = Path.GetFileName(filePath);
 
-            // Kiểm tra xem file này đã từng được đọc chưa? Nếu rồi thì bỏ qua ngay!
-            if (_processedFiles.Contains(fileName))
-            {
-                return;
-            }
+            // 1. CHỐNG TRÙNG LẶP: Đã xử lý rồi thì bỏ qua
+            if (_registry.IsFileProcessed(fileName)) return;
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 3; i++) // Cơ chế Retry nếu file đang bị hệ thống khóa
             {
                 try
                 {
-                    // Dùng ReadAllTextAsync thay vì ReadAllText
                     var json = await File.ReadAllTextAsync(filePath);
-                    var wrapper = JsonSerializer.Deserialize<InvoiceResponse>(json, _options);
+                    var response = JsonSerializer.Deserialize<InvoiceResponse>(json, _options);
 
-                    if (wrapper?.Invoices != null)
+                    if (response?.Invoices != null)
                     {
-                        foreach (var invoice in wrapper.Invoices)
+                        foreach (var invoice in response.Invoices)
                         {
+                            if (invoice.LineItems == null) continue;
+
                             foreach (var line in invoice.LineItems)
                             {
-                                if (string.IsNullOrWhiteSpace(line.ItemCode) || !_state.Products.ContainsKey(line.ItemCode)) 
-                                    continue;
+                                int qty = (int)line.Quantity;
 
+                                // 2. PHÂN LOẠI INVOICE
                                 if (invoice.Type == "ACCPAY")
-                                    _state.AddPurchase(line.ItemCode, (int)line.Quantity, line.UnitAmount, invoice.Date);
+                                {
+                                    _state.AddPurchase(line.ItemCode, qty, line.UnitAmount, invoice.Date);
+                                }
                                 else if (invoice.Type == "ACCREC")
-                                    _state.AddSale(line.ItemCode, (int)line.Quantity, invoice.Date);
+                                {
+                                    _state.AddSale(line.ItemCode, qty, invoice.Date);
+                                }
                             }
                         }
                     }
-                    
-                    // Ghi nhớ lại file này đã xử lý thành công để lần sau không đọc lại nữa
-                    _processedFiles.Add(fileName);
-                    break; 
+
+                    // 3. LƯU LỊCH SỬ
+                    _registry.MarkAsProcessed(fileName);
+                    break;
                 }
                 catch (IOException)
                 {
-                    await Task.Delay(500); // Dùng Task.Delay thay cho Thread.Sleep
+                    await Task.Delay(500);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    break; 
+                    Console.WriteLine($"[Lỗi JSON Invoice] File {fileName}: {ex.Message}");
+                    break;
                 }
             }
         }
+
         public async Task ProcessProductFileAsync(string filePath)
         {
             var fileName = Path.GetFileName(filePath);
-            if (_processedFiles.Contains(fileName)) return;
+            if (_registry.IsFileProcessed(fileName)) return;
 
             for (int i = 0; i < 3; i++)
             {
@@ -89,12 +91,16 @@ namespace InventoryKpiSystem.Services.FileProcessing
                     {
                         foreach (var p in response.Items)
                         {
-                            // Cập nhật sản phẩm cũ hoặc thêm mới sản phẩm vào kho
-                            _state.Products[p.ItemCode] = p;
+                            var existingProduct = _state.Products.GetOrAdd(p.ItemCode, p);
+                            lock (existingProduct)
+                            {
+                                existingProduct.Name = p.Name;
+                                existingProduct.ProductId = p.ProductId;
+                            }
                         }
                     }
-                    
-                    _processedFiles.Add(fileName);
+
+                    _registry.MarkAsProcessed(fileName);
                     break;
                 }
                 catch (IOException)
@@ -103,7 +109,7 @@ namespace InventoryKpiSystem.Services.FileProcessing
                 }
                 catch (Exception)
                 {
-                    break; // Lỗi cú pháp JSON thì bỏ qua
+                    break;
                 }
             }
         }

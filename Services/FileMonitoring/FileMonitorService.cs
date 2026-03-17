@@ -10,8 +10,7 @@ namespace InventoryKpiSystem.Services.FileMonitoring
         private readonly string _productsPath;
         private readonly FileProcessor _processor;
         private readonly Action _onFileProcessed;
-        
-        // Dùng 2 watcher cho 2 thư mục khác nhau
+
         private FileSystemWatcher? _invoiceWatcher;
         private FileSystemWatcher? _productWatcher;
 
@@ -29,11 +28,8 @@ namespace InventoryKpiSystem.Services.FileMonitoring
             _productWatcher = SetupWatcher(_productsPath);
 
             Console.WriteLine("\n[System] Real-time monitoring is ACTIVE.");
-            Console.WriteLine($"[System] Watching Invoices: {_invoicesPath}");
-            Console.WriteLine($"[System] Watching Products: {_productsPath}");
         }
 
-        // Hàm tạo lính canh đa năng
         private FileSystemWatcher SetupWatcher(string folderPath)
         {
             if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
@@ -41,34 +37,44 @@ namespace InventoryKpiSystem.Services.FileMonitoring
             var watcher = new FileSystemWatcher(folderPath)
             {
                 Filter = "*.txt",
-                NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite
+                // Mở rộng tai mắt: Lắng nghe thêm sự thay đổi kích thước và thời gian tạo (Chống OneDrive)
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.CreationTime,
+
+                // Nâng cấp giáp: Tăng bộ đệm lên mức tối đa (64KB) để hứng đợt paste hàng chục file không bị rớt
+                InternalBufferSize = 65536
             };
 
-            // BẮT ĐÚNG 2 SỰ KIỆN NHƯ YÊU CẦU CỦA RUBRIC
+            // Bắt trọn mọi hành vi của file
             watcher.Created += OnFileDetected;
-            watcher.Renamed += OnFileDetected; 
-            
+            watcher.Renamed += OnFileDetected;
+            watcher.Changed += OnFileDetected; // Thêm sự kiện Changed
+
             watcher.EnableRaisingEvents = true;
             return watcher;
         }
 
-        // Dùng async void cho Event Handler
         private async void OnFileDetected(object sender, FileSystemEventArgs e)
         {
-            Console.WriteLine($"\n[⚡ NEW/RENAMED FILE DETECTED] {e.Name} - Processing...");
-            
-            // Phân loại xem file rớt vào thư mục nào để gọi đúng hàm xử lý
-            if (e.FullPath.Contains("product", StringComparison.OrdinalIgnoreCase))
+            // BẮT BUỘC PHẢI CÓ TRY-CATCH CHO ASYNC VOID
+            try
             {
-                await _processor.ProcessProductFileAsync(e.FullPath);
+                Console.WriteLine($"\n[⚡ FILE MỚI] {e.Name} - Đang xử lý...");
+
+                if (e.FullPath.Contains("product", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _processor.ProcessProductFileAsync(e.FullPath);
+                }
+                else
+                {
+                    await _processor.ProcessInvoiceFileAsync(e.FullPath);
+                }
+
+                _onFileProcessed?.Invoke();
             }
-            else
+            catch (Exception ex)
             {
-                await _processor.ProcessInvoiceFileAsync(e.FullPath);
+                Console.WriteLine($"[Cảnh báo Hệ thống] Bắt được lỗi: {ex.Message}");
             }
-            
-            // In báo cáo mới
-            _onFileProcessed?.Invoke();
         }
 
         public void Dispose()

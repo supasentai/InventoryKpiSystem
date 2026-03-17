@@ -21,7 +21,7 @@ namespace InventoryKpiSystem.Services.KPI
         public int GetOutOfStockItems(List<ProductInventory> inventories)
         {
             return inventories.Count(i => 
-                (i.PurchasedQuantity > 0 || i.SoldQuantity > 0) && // Phải là hàng đang kinh doanh
+                (i.PurchasedQuantity > 0) && // Phải là hàng đang kinh doanh
                 (i.PurchasedQuantity - i.SoldQuantity) <= 0);      // Và lượng tồn kho chạm đáy (<=0)
         }
 
