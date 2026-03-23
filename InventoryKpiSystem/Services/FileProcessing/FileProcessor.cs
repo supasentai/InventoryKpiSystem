@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic; 
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -14,7 +15,6 @@ namespace InventoryKpiSystem.Services.FileProcessing
         private readonly JsonSerializerOptions _options;
         private readonly ProcessedFileRegistry _registry;
 
-        // Tiêm Registry vào qua Constructor
         public FileProcessor(InventoryState state, JsonSerializerOptions options, ProcessedFileRegistry registry)
         {
             _state = state;
@@ -25,11 +25,9 @@ namespace InventoryKpiSystem.Services.FileProcessing
         public async Task ProcessInvoiceFileAsync(string filePath)
         {
             var fileName = Path.GetFileName(filePath);
-
-            // 1. CHỐNG TRÙNG LẶP: Đã xử lý rồi thì bỏ qua
             if (_registry.IsFileProcessed(fileName)) return;
 
-            for (int i = 0; i < 3; i++) // Cơ chế Retry nếu file đang bị hệ thống khóa
+            for (int i = 0; i < 3; i++)
             {
                 try
                 {
@@ -43,13 +41,10 @@ namespace InventoryKpiSystem.Services.FileProcessing
                             if (invoice.LineItems == null) continue;
 
                             foreach (var line in invoice.LineItems)
-
                             {
                                 if (string.IsNullOrWhiteSpace(line.ItemCode)) continue;
-
                                 int qty = (int)line.Quantity;
 
-                                // 2. PHÂN LOẠI INVOICE
                                 if (invoice.Type == "ACCPAY")
                                 {
                                     _state.AddPurchase(line.ItemCode, qty, line.UnitAmount, invoice.Date);
@@ -62,7 +57,6 @@ namespace InventoryKpiSystem.Services.FileProcessing
                         }
                     }
 
-                    // 3. LƯU LỊCH SỬ
                     _registry.MarkAsProcessed(fileName);
                     break;
                 }
@@ -81,7 +75,7 @@ namespace InventoryKpiSystem.Services.FileProcessing
         public async Task ProcessProductFileAsync(string filePath)
         {
             var fileName = Path.GetFileName(filePath);
-            if (_registry.IsFileProcessed(fileName)) return;
+
 
             for (int i = 0; i < 3; i++)
             {
@@ -94,24 +88,29 @@ namespace InventoryKpiSystem.Services.FileProcessing
                     {
                         foreach (var p in response.Items)
                         {
-                            var existingProduct = _state.Products.GetOrAdd(p.ItemCode, p);
+                            if (string.IsNullOrWhiteSpace(p.ItemCode)) continue;
+
+                            var existingProduct = _state.Products.GetOrAdd(p.ItemCode, id => new ProductInventory { ItemCode = id });
+
                             lock (existingProduct)
                             {
-                                existingProduct.Name = p.Name;
-                                existingProduct.ProductId = p.ProductId;
+
+                                if (!string.IsNullOrEmpty(p.Name)) existingProduct.Name = p.Name;
+                                if (!string.IsNullOrEmpty(p.ProductId)) existingProduct.ProductId = p.ProductId;
                             }
                         }
                     }
 
-                    _registry.MarkAsProcessed(fileName);
+                    _registry.MarkAsProcessed(fileName); 
                     break;
                 }
                 catch (IOException)
                 {
                     await Task.Delay(500);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Console.WriteLine($"[Lỗi Hệ Thống] Không thể đọc dữ liệu từ file {fileName}: {ex.Message}");
                     break;
                 }
             }

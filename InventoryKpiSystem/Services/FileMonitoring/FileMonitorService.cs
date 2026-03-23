@@ -1,86 +1,117 @@
 using System;
+using System.Collections.Concurrent;
 using System.IO;
+using System.Threading.Tasks;
 using InventoryKpiSystem.Services.FileProcessing;
+using InventoryKpiSystem.Services.Inventory;
 
 namespace InventoryKpiSystem.Services.FileMonitoring
 {
-    public class FileMonitorService : IDisposable
+    public class FileMonitorService
     {
-        private readonly string _invoicesPath;
-        private readonly string _productsPath;
+        private readonly string _invoicesFolder;
+        private readonly string _productsFolder;
         private readonly FileProcessor _processor;
+        private readonly FileProcessingQueue _queue;
         private readonly Action _onFileProcessed;
+        private readonly InventoryState _state;
 
-        private FileSystemWatcher? _invoiceWatcher;
-        private FileSystemWatcher? _productWatcher;
+        private readonly ConcurrentDictionary<string, DateTime> _recentFiles = new();
 
-        public FileMonitorService(string invoicesPath, string productsPath, FileProcessor processor, Action onFileProcessed)
+        public FileMonitorService(
+            string invoicesFolder,
+            string productsFolder,
+            FileProcessor processor,
+            FileProcessingQueue queue,
+            Action onFileProcessed,
+            InventoryState state)
         {
-            _invoicesPath = invoicesPath;
-            _productsPath = productsPath;
+            _invoicesFolder = invoicesFolder;
+            _productsFolder = productsFolder;
             _processor = processor;
+            _queue = queue;
             _onFileProcessed = onFileProcessed;
+            _state = state;
         }
 
         public void StartMonitoring()
         {
-            _invoiceWatcher = SetupWatcher(_invoicesPath);
-            _productWatcher = SetupWatcher(_productsPath);
+            SetupWatcher(_invoicesFolder);
+            SetupWatcher(_productsFolder);
 
-            Console.WriteLine("\n[System] Real-time monitoring is ACTIVE.");
+            Task.Run(ProcessQueueAsync);
+
+            Console.WriteLine("[System] Radar canh gác file mới đang hoạt động ngầm (Sử dụng Channel)...");
         }
 
-        private FileSystemWatcher SetupWatcher(string folderPath)
+        private void SetupWatcher(string folderPath)
         {
             if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
 
-            var watcher = new FileSystemWatcher(folderPath)
+            var watcher = new FileSystemWatcher(folderPath, "*.txt")
             {
-                Filter = "*.txt",
-                // Mở rộng tai mắt: Lắng nghe thêm sự thay đổi kích thước và thời gian tạo (Chống OneDrive)
-                NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.CreationTime,
-
-                // Nâng cấp giáp: Tăng bộ đệm lên mức tối đa (64KB) để hứng đợt paste hàng chục file không bị rớt
-                InternalBufferSize = 65536
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite
             };
 
-            // Bắt trọn mọi hành vi của file
-            watcher.Created += OnFileDetected;
-            watcher.Renamed += OnFileDetected;
-            watcher.Changed += OnFileDetected; // Thêm sự kiện Changed
+            watcher.Created += (s, e) => OnFileDetected(e.FullPath);
+            watcher.Changed += (s, e) => OnFileDetected(e.FullPath);
 
             watcher.EnableRaisingEvents = true;
-            return watcher;
         }
 
-        private async void OnFileDetected(object sender, FileSystemEventArgs e)
+        private void OnFileDetected(string filePath)
         {
-            // BẮT BUỘC PHẢI CÓ TRY-CATCH CHO ASYNC VOID
-            try
+            if (_recentFiles.TryGetValue(filePath, out var lastTime))
             {
-                Console.WriteLine($"\n[⚡ FILE MỚI] {e.Name} - Đang xử lý...");
-
-                if (e.FullPath.Contains("product", StringComparison.OrdinalIgnoreCase))
-                {
-                    await _processor.ProcessProductFileAsync(e.FullPath);
-                }
-                else
-                {
-                    await _processor.ProcessInvoiceFileAsync(e.FullPath);
-                }
-
-                _onFileProcessed?.Invoke();
+                if ((DateTime.Now - lastTime).TotalSeconds < 2) return;
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[Cảnh báo Hệ thống] Bắt được lỗi: {ex.Message}");
-            }
+
+            _recentFiles[filePath] = DateTime.Now;
+
+
+            string currentTime = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
+            string fileName = Path.GetFileName(filePath);
+
+            Console.WriteLine($"\n=======================================================");
+            Console.WriteLine($"[📥 ĐÃ THÊM FILE MỚI] {fileName}");
+            Console.WriteLine($"[⏰ THỜI GIAN]        {currentTime}");
+            Console.WriteLine($"=======================================================");
+            Console.WriteLine("Hệ thống đang xử lý, vui lòng đợi trong giây lát...");
+
+            // Bơm vào ống dẫn Channel
+            _ = _queue.EnqueueFileAsync(filePath);
         }
 
-        public void Dispose()
+        private async Task ProcessQueueAsync()
         {
-            _invoiceWatcher?.Dispose();
-            _productWatcher?.Dispose();
+            await foreach (var filePath in _queue.Reader.ReadAllAsync())
+            {
+                var fileName = Path.GetFileName(filePath);
+                try
+                {
+                    await Task.Delay(1000);
+
+                    if (fileName.Contains("product", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await _processor.ProcessProductFileAsync(filePath);
+                    }
+                    else
+                    {
+                        await _processor.ProcessInvoiceFileAsync(filePath);
+                    }
+
+                    _state.SaveSnapshot();
+
+                    Console.WriteLine($"[✅ XỬ LÝ XONG] Dữ liệu từ '{fileName}' đã được nạp và cập nhật Snapshot!");
+
+                    _onFileProcessed?.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"\n[🚨 LỖI ĐỌC FILE NGẦM] {fileName}: {ex.Message}");
+                    _onFileProcessed?.Invoke();
+                }
+            }
         }
     }
 }

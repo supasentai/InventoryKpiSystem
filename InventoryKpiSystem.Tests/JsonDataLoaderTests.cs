@@ -11,16 +11,13 @@ public class JsonDataLoaderTests
     [Fact]
     public async Task LoadPurchaseOrders_ShouldParseValidJson()
     {
-        // Sử dụng đúng cấu trúc JSON mà ProductInventory mong đợi (ItemID, Name)
         var json = "[{ \"ItemID\": \"P01\", \"Name\": \"Test Product\" }]";
         var path = "test_orders.json";
 
         await File.WriteAllTextAsync(path, json);
 
-        // Đổi từ JsonDataLoader thành JsonFileLoader để khớp với file .cs của bạn
         var loader = new JsonFileLoader();
 
-        // Đổi method thành LoadPurchaseOrdersAsync (vì file logic không có LoadProductsAsync)
         var resultStream = loader.LoadPurchaseOrdersAsync(path);
 
         var results = new List<PurchaseOrder>();

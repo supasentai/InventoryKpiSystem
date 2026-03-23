@@ -1,90 +1,98 @@
 ﻿using System;
-using System.IO;
-using System.Linq;
+using System.IO; // Bổ sung thư viện đọc file
 using System.Text.Json;
+using System.Threading.Tasks; // Bổ sung thư viện chạy đa luồng
 using InventoryKpiSystem.Models;
-using InventoryKpiSystem.DTOs; // Thêm thư viện chứa KpiResult
+using InventoryKpiSystem.Services.FileMonitoring;
+using InventoryKpiSystem.Services.FileProcessing;
+using InventoryKpiSystem.Services.Idempotency;
 using InventoryKpiSystem.Services.Inventory;
 using InventoryKpiSystem.Services.KPI;
-using System.Threading.Tasks;
-using InventoryKpiSystem.Services.FileProcessing;
-using InventoryKpiSystem.Services.FileMonitoring;
-using InventoryKpiSystem.Services.Idempotency;
-using InventoryKpiSystem.Services.Reporting; // Thêm thư viện chứa ReportGenerator
 
-Console.WriteLine("=================================================");
-Console.WriteLine("    INVENTORY KPI SYSTEM - REAL-TIME SERVICE");
-Console.WriteLine("=================================================");
-
-var basePath = Directory.GetCurrentDirectory();
-var productPath = Path.Combine(basePath, "Data", "product.txt");
-var invoicesFolder = Path.Combine(basePath, "Data", "Invoices");
-var productsFolder = Path.Combine(basePath, "Data", "Product");
-
-if (!Directory.Exists(invoicesFolder)) Directory.CreateDirectory(invoicesFolder);
-if (!Directory.Exists(productsFolder)) Directory.CreateDirectory(productsFolder);
-
-Console.WriteLine($"\n[System] LƯU Ý: HÃY THẢ FILE MỚI VÀO MỘT TRONG HAI THƯ MỤC NÀY:");
-Console.WriteLine($"👉 {invoicesFolder}\n");
-Console.WriteLine($"👉 {productsFolder}\n");
-
-var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-var inventoryState = new InventoryState();
-var kpiEngine = new KpiEngine();
-
-// KHỞI TẠO CÁC DỊCH VỤ ĐÃ ĐƯỢC CHIA TÁCH
-var fileRegistry = new ProcessedFileRegistry();
-var fileProcessor = new FileProcessor(inventoryState, jsonOptions, fileRegistry);
-
-// 1. Khởi tạo ReportGenerator
-var reportGenerator = new ReportGenerator();
-
-// Hàm in báo cáo (Đã được nâng cấp để dùng ReportGenerator và KpiResult)
-Action printReport = () =>
+namespace InventoryKpiSystem
 {
-    var inventories = inventoryState.GetAllInventory();
-
-    // 2. Đóng gói dữ liệu tính toán được vào DTO KpiResult
-    var kpiResult = new KpiResult
+    class Program
     {
-        GeneratedAt = DateTime.Now,
-        TotalSkus = kpiEngine.GetTotalSkus(inventories),
-        InventoryValue = kpiEngine.GetStockValue(inventories),
-        OutOfStockItems = kpiEngine.GetOutOfStockItems(inventories),
-        AverageDailySales = kpiEngine.GetAverageDailySales(inventories),
-        AverageInventoryAge = kpiEngine.GetAverageInventoryAge(inventories)
-    };
+        // ĐÃ SỬA: Đổi 'void' thành 'async Task' để dùng được tính năng quét file
+        static async Task Main(string[] args)
+        {
+            Console.WriteLine("=== KHỞI ĐỘNG HỆ THỐNG KPI ERP ===");
 
-    // 3. Giao nhiệm vụ in màn hình và xuất file JSON cho ReportGenerator
-    reportGenerator.GenerateReport(kpiResult);
-};
+            string invoicesFolder = "Data/Invoices";
+            string productsFolder = "Data/Products";
 
-// 1. NẠP DỮ LIỆU SẢN PHẨM BAN ĐẦU
-Console.WriteLine("[System] Loading product catalog...");
-if (File.Exists(productPath))
-{
-    var json = File.ReadAllText(productPath);
-    var response = JsonSerializer.Deserialize<ProductResponse>(json, jsonOptions);
-    if (response?.Items != null)
-    {
-        foreach (var p in response.Items)
-            inventoryState.Products[p.ItemCode] = p;
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var registry = new ProcessedFileRegistry();
+            var inventoryState = new InventoryState();
+            var processor = new FileProcessor(inventoryState, options, registry);
+            var queue = new FileProcessingQueue(1000);
+
+            var fileQueue = new InventoryKpiSystem.Services.FileProcessing.FileProcessingQueue();
+
+            // 2. Định nghĩa hành động gọi lại Menu sau khi đọc xong
+            Action onFileProcessed = () => Console.Write("\nChọn chức năng (0-3): ");
+
+            // 3. Truyền đủ 6 món vũ khí vào cho Radar
+            var monitorService = new InventoryKpiSystem.Services.FileMonitoring.FileMonitorService(
+                invoicesFolder,
+                productsFolder,
+                processor,
+                fileQueue,
+                onFileProcessed,
+                inventoryState
+            );
+
+            inventoryState.SaveSnapshot();
+            monitorService.StartMonitoring();
+
+            Console.WriteLine("\n[System] Đang đồng bộ hóa dữ liệu lịch sử (Strict Order)...");
+
+            // 1. KIỂM TRA THƯ MỤC SẢN PHẨM CỰC KỲ KHẮT KHE
+            Console.WriteLine($"[Radar] Đang quét thư mục: {productsFolder}...");
+            if (Directory.Exists(productsFolder))
+            {
+
+                var productFiles = Directory.GetFiles(productsFolder).OrderBy(f => f).ToList();
+                Console.WriteLine($"[Radar] Đã tìm thấy {productFiles.Count} file trong thư mục Products!");
+
+                foreach (var file in productFiles)
+                {
+                    Console.WriteLine($"[Radar] Bắt đầu gọi hàm đọc file: {file}");
+                    await processor.ProcessProductFileAsync(file);
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[🚨 LỖI NGHIÊM TRỌNG] Thư mục '{productsFolder}' KHÔNG TỒN TẠI hoặc sai đường dẫn!");
+            }
+
+            // 2. Nạp dữ liệu Giao dịch (Invoices) theo ĐÚNG THỨ TỰ THỜI GIAN
+            if (Directory.Exists(invoicesFolder))
+            {
+                // Sắp xếp file theo tên (VD: invoice_01 sẽ chạy trước invoice_02)
+                // Điều này cứu sống thuật toán FIFO khỏi nghịch lý "Bán trước khi Nhập"
+                var invoiceFiles = Directory.GetFiles(invoicesFolder, "*.txt").OrderBy(f => f);
+                foreach (var file in invoiceFiles)
+                {
+                    await processor.ProcessInvoiceFileAsync(file);
+                }
+            }
+
+            // 3. Đã xử lý xong 100% dữ liệu cũ một cách hoàn hảo. 
+            // Giờ mới lưu Snapshot và Bật Radar canh gác file mới.
+            inventoryState.SaveSnapshot();
+            monitorService.StartMonitoring();
+
+            Console.WriteLine("[System] Đồng bộ hoàn tất! Dữ liệu đã sẵn sàng.");
+
+            // ==========================================================
+            var kpiEngine = new InventoryKpiSystem.Services.KPI.KpiEngine();
+
+            // 2. Truyền nó vào cho ReportGenerator
+            var reportGenerator = new InventoryKpiSystem.Services.Reporting.ReportGenerator(inventoryState, kpiEngine);
+
+            // 3. Chạy Menu giao diện mới
+            reportGenerator.RunInteractiveMenu();
+        }
     }
 }
-
-// 2. NẠP CÁC HÓA ĐƠN LỊCH SỬ TỪ ĐẦU
-Console.WriteLine("[System] Loading historical invoices...");
-foreach (var file in Directory.GetFiles(invoicesFolder, "*.txt"))
-{
-    await fileProcessor.ProcessInvoiceFileAsync(file);
-}
-
-// In báo cáo khởi tạo
-printReport();
-
-// 3. KÍCH HOẠT THEO DÕI REAL-TIME
-using var monitorService = new FileMonitorService(invoicesFolder, productsFolder, fileProcessor, printReport);
-monitorService.StartMonitoring();
-
-Console.WriteLine("[System] Press ENTER to stop the service...\n");
-Console.ReadLine();
