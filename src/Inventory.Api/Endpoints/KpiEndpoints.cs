@@ -1,5 +1,6 @@
 using Inventory.Application.DTOs;
 using Inventory.Application.Interfaces;
+using Inventory.Domain.Entities;
 
 namespace Inventory.Api.Endpoints;
 
@@ -7,9 +8,18 @@ internal static class KpiEndpoints
 {
     public static IEndpointRouteBuilder MapKpiEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/kpis", (IInventoryService inventoryService, IKpiService kpiService) =>
+        app.MapGet("/api/kpis", async (
+            IInventoryRepository inventoryRepository,
+            IInventoryService inventoryService,
+            IKpiService kpiService,
+            CancellationToken cancellationToken) =>
         {
-            var snapshot = kpiService.CreateSnapshot(inventoryService.GetAllInventory());
+            var inventory = await TryGetDatabaseInventory(inventoryRepository, cancellationToken);
+            var snapshot = kpiService.CreateSnapshot(
+                inventory.Count > 0
+                    ? inventory.ToList()
+                    : inventoryService.GetAllInventory());
+
             return Results.Ok(snapshot);
         })
         .WithName("GetKpis")
@@ -18,5 +28,19 @@ internal static class KpiEndpoints
         .Produces<KpiResult>(StatusCodes.Status200OK);
 
         return app;
+    }
+
+    private static async Task<IReadOnlyList<InventoryItem>> TryGetDatabaseInventory(
+        IInventoryRepository inventoryRepository,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await inventoryRepository.GetAllAsync(cancellationToken);
+        }
+        catch
+        {
+            return Array.Empty<InventoryItem>();
+        }
     }
 }

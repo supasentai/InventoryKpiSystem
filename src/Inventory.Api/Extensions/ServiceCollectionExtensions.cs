@@ -3,6 +3,7 @@ using Inventory.Application.Services;
 using Inventory.Infrastructure.FileParsing;
 using Inventory.Infrastructure.Json;
 using Inventory.Infrastructure.Persistence;
+using Inventory.Infrastructure.Persistence.Repositories;
 using Inventory.Infrastructure.Reporting;
 using Microsoft.EntityFrameworkCore;
 
@@ -54,6 +55,9 @@ internal static class ServiceCollectionExtensions
         });
         services.AddSingleton<IProductFileReader, ProductFileReader>();
         services.AddSingleton<IInvoiceFileReader, InvoiceFileReader>();
+        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+        services.AddScoped<IInventoryRepository, InventoryRepository>();
         services.AddSingleton<IProcessedFileRegistry>(_ =>
             new ProcessedFileRegistry(Path.Combine(dataPaths.RuntimeRoot, "processed-files")));
         services.AddSingleton<IReportWriter>(_ =>
