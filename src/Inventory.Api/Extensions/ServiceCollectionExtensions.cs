@@ -1,3 +1,4 @@
+using Inventory.Api.Services;
 using Inventory.Application.Interfaces;
 using Inventory.Application.Services;
 using Inventory.Infrastructure.FileParsing;
@@ -58,6 +59,7 @@ internal static class ServiceCollectionExtensions
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IInvoiceRepository, InvoiceRepository>();
         services.AddScoped<IInventoryRepository, InventoryRepository>();
+        services.AddScoped<IDatabaseHealthChecker, DatabaseHealthChecker>();
         services.AddSingleton<IProcessedFileRegistry>(_ =>
             new ProcessedFileRegistry(Path.Combine(dataPaths.RuntimeRoot, "processed-files")));
         services.AddSingleton<IReportWriter>(_ =>

@@ -1,3 +1,4 @@
+using Inventory.Api.Responses;
 using Inventory.Application.Interfaces;
 
 namespace Inventory.Api.Endpoints;
@@ -9,12 +10,17 @@ internal static class InventoryEndpoints
         app.MapGet("/api/inventory", async (
             IInventoryRepository inventoryRepository,
             IInventoryService inventoryService,
+            ILoggerFactory loggerFactory,
             CancellationToken cancellationToken) =>
         {
-            var databaseInventory = await TryGetDatabaseInventory(inventoryRepository, cancellationToken);
+            var databaseInventory = await TryGetDatabaseInventory(
+                inventoryRepository,
+                loggerFactory,
+                cancellationToken);
+
             if (databaseInventory.Count > 0)
             {
-                return Results.Ok(databaseInventory);
+                return Results.Ok(ApiResponse<IReadOnlyList<object>>.Ok(databaseInventory));
             }
 
             var inventory = inventoryService.GetAllInventory()
@@ -36,22 +42,27 @@ internal static class InventoryEndpoints
                             batch.InitialQuantity,
                             batch.RemainingQuantity
                         })
-                });
+                })
+                .Cast<object>()
+                .ToList();
 
-            return Results.Ok(inventory);
+            return Results.Ok(ApiResponse<IReadOnlyList<object>>.Ok(inventory));
         })
         .WithName("GetInventory")
         .WithTags("Inventory")
         .WithSummary("Lists inventory quantities, value, sales, and FIFO purchase lots.")
-        .Produces(StatusCodes.Status200OK);
+        .Produces<ApiResponse<IReadOnlyList<object>>>(StatusCodes.Status200OK);
 
         return app;
     }
 
     private static async Task<IReadOnlyList<object>> TryGetDatabaseInventory(
         IInventoryRepository inventoryRepository,
+        ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
+        var logger = loggerFactory.CreateLogger("Inventory.Api.Endpoints.InventoryEndpoints");
+
         try
         {
             var inventory = await inventoryRepository.GetAllAsync(cancellationToken);
@@ -77,8 +88,9 @@ internal static class InventoryEndpoints
                 .Cast<object>()
                 .ToList();
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogWarning(ex, "Database inventory read failed. Falling back to in-memory inventory state.");
             return Array.Empty<object>();
         }
     }

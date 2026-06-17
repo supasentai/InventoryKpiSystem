@@ -20,3 +20,5 @@ app.MapKpiEndpoints();
 app.MapImportEndpoints();
 
 app.Run();
+
+public partial class Program;

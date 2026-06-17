@@ -1,4 +1,5 @@
 using Inventory.Api.Extensions;
+using Inventory.Api.Responses;
 using Inventory.Application.Interfaces;
 using Inventory.Domain.Entities;
 using Inventory.Domain.Enums;
@@ -20,16 +21,33 @@ internal static class ImportEndpoints
             IProductRepository productRepository,
             IInvoiceRepository invoiceRepository,
             IInventoryRepository inventoryRepository,
+            HttpRequest request,
+            ILoggerFactory loggerFactory,
             CancellationToken cancellationToken) =>
         {
+            var logger = loggerFactory.CreateLogger("Inventory.Api.Endpoints.ImportEndpoints");
+
+            if (request.ContentLength.GetValueOrDefault() > 0)
+            {
+                logger.LogWarning("Import request rejected because payloads are not supported.");
+
+                return Results.Problem(
+                    title: "Invalid request payload.",
+                    detail: "POST /api/import/run does not accept a request body.",
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+
             if (!Directory.Exists(paths.ProductsFolder) || !Directory.Exists(paths.InvoicesFolder))
             {
-                return Results.NotFound(new
-                {
-                    message = "Product or invoice data folder was not found.",
+                logger.LogError(
+                    "Configured import folders are invalid. ProductsFolder: {ProductsFolder}; InvoicesFolder: {InvoicesFolder}",
                     paths.ProductsFolder,
-                    paths.InvoicesFolder
-                });
+                    paths.InvoicesFolder);
+
+                return Results.Problem(
+                    title: "Import folders were not found.",
+                    detail: "Product or invoice data folder was not found. Check the configured sample data paths.",
+                    statusCode: StatusCodes.Status404NotFound);
             }
 
             var productFiles = Directory.GetFiles(paths.ProductsFolder, "*.txt")
@@ -40,48 +58,75 @@ internal static class ImportEndpoints
                 .OrderBy(file => file)
                 .ToList();
 
+            if (productFiles.Count == 0 || invoiceFiles.Count == 0)
+            {
+                logger.LogWarning(
+                    "Import request found missing input files. ProductFiles: {ProductFileCount}; InvoiceFiles: {InvoiceFileCount}",
+                    productFiles.Count,
+                    invoiceFiles.Count);
+
+                return Results.Problem(
+                    title: "Import files were not found.",
+                    detail: "At least one product file and one invoice file are required before running import.",
+                    statusCode: StatusCodes.Status404NotFound);
+            }
+
             var products = new List<Product>();
             var invoices = new List<Invoice>();
 
-            foreach (var file in productFiles)
+            try
             {
-                products.AddRange(await productFileReader.ReadAsync(file, cancellationToken));
-                await processor.ProcessProductFileAsync(file, cancellationToken);
+                foreach (var file in productFiles)
+                {
+                    products.AddRange(await productFileReader.ReadAsync(file, cancellationToken));
+                    await processor.ProcessProductFileAsync(file, cancellationToken);
+                }
+
+                foreach (var file in invoiceFiles)
+                {
+                    invoices.AddRange(await invoiceFileReader.ReadAsync(file, cancellationToken));
+                    await processor.ProcessInvoiceFileAsync(file, cancellationToken);
+                }
+
+                var stockMovements = CreateStockMovements(invoices);
+
+                snapshotStore.Save(inventoryService.Items);
+                await productRepository.ReplaceAsync(products, cancellationToken);
+                await invoiceRepository.ReplaceAsync(invoices, cancellationToken);
+                await inventoryRepository.ReplaceAsync(
+                    inventoryService.GetAllInventory(),
+                    stockMovements,
+                    cancellationToken);
+
+                return Results.Ok(ApiResponse<object>.Ok(new
+                {
+                    message = "Import completed.",
+                    productFilesProcessed = productFiles.Count,
+                    invoiceFilesProcessed = invoiceFiles.Count,
+                    productsPersisted = products.Count,
+                    invoicesPersisted = invoices.Count,
+                    stockMovementsPersisted = stockMovements.Count,
+                    inventoryItems = inventoryService.Items.Count,
+                    persistedToDatabase = true
+                }));
             }
-
-            foreach (var file in invoiceFiles)
+            catch (Exception ex)
             {
-                invoices.AddRange(await invoiceFileReader.ReadAsync(file, cancellationToken));
-                await processor.ProcessInvoiceFileAsync(file, cancellationToken);
+                logger.LogError(ex, "Import workflow failed.");
+
+                return Results.Problem(
+                    title: "Import failed.",
+                    detail: "The import workflow failed while reading files or persisting data.",
+                    statusCode: StatusCodes.Status500InternalServerError);
             }
-
-            var stockMovements = CreateStockMovements(invoices);
-
-            snapshotStore.Save(inventoryService.Items);
-            await productRepository.ReplaceAsync(products, cancellationToken);
-            await invoiceRepository.ReplaceAsync(invoices, cancellationToken);
-            await inventoryRepository.ReplaceAsync(
-                inventoryService.GetAllInventory(),
-                stockMovements,
-                cancellationToken);
-
-            return Results.Ok(new
-            {
-                message = "Import completed.",
-                productFilesProcessed = productFiles.Count,
-                invoiceFilesProcessed = invoiceFiles.Count,
-                productsPersisted = products.Count,
-                invoicesPersisted = invoices.Count,
-                stockMovementsPersisted = stockMovements.Count,
-                inventoryItems = inventoryService.Items.Count,
-                persistedToDatabase = true
-            });
         })
         .WithName("RunImport")
         .WithTags("Import")
         .WithSummary("Runs the file-based product and invoice import workflow.")
-        .Produces(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status404NotFound);
+        .Produces<ApiResponse<object>>(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return app;
     }

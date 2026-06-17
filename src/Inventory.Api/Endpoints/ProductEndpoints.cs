@@ -1,3 +1,4 @@
+using Inventory.Api.Responses;
 using Inventory.Application.Interfaces;
 
 namespace Inventory.Api.Endpoints;
@@ -9,12 +10,17 @@ internal static class ProductEndpoints
         app.MapGet("/api/products", async (
             IProductRepository productRepository,
             IInventoryService inventoryService,
+            ILoggerFactory loggerFactory,
             CancellationToken cancellationToken) =>
         {
-            var databaseProducts = await TryGetDatabaseProducts(productRepository, cancellationToken);
+            var databaseProducts = await TryGetDatabaseProducts(
+                productRepository,
+                loggerFactory,
+                cancellationToken);
+
             if (databaseProducts.Count > 0)
             {
-                return Results.Ok(databaseProducts);
+                return Results.Ok(ApiResponse<IReadOnlyList<object>>.Ok(databaseProducts));
             }
 
             var products = inventoryService.GetAllInventory()
@@ -24,22 +30,27 @@ internal static class ProductEndpoints
                     item.ProductId,
                     item.ItemCode,
                     item.Name
-                });
+                })
+                .Cast<object>()
+                .ToList();
 
-            return Results.Ok(products);
+            return Results.Ok(ApiResponse<IReadOnlyList<object>>.Ok(products));
         })
         .WithName("GetProducts")
         .WithTags("Products")
         .WithSummary("Lists products loaded into the inventory state.")
-        .Produces(StatusCodes.Status200OK);
+        .Produces<ApiResponse<IReadOnlyList<object>>>(StatusCodes.Status200OK);
 
         return app;
     }
 
     private static async Task<IReadOnlyList<object>> TryGetDatabaseProducts(
         IProductRepository productRepository,
+        ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
+        var logger = loggerFactory.CreateLogger("Inventory.Api.Endpoints.ProductEndpoints");
+
         try
         {
             var products = await productRepository.GetAllAsync(cancellationToken);
@@ -53,8 +64,9 @@ internal static class ProductEndpoints
                 .Cast<object>()
                 .ToList();
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogWarning(ex, "Database product read failed. Falling back to in-memory inventory state.");
             return Array.Empty<object>();
         }
     }
