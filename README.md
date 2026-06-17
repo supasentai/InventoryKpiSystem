@@ -82,6 +82,22 @@ Swagger UI and OpenAPI documentation are available at:
 
 The current API still reads source import files from `InventoryKpiSystem/`. After import, `GET /api/products`, `GET /api/inventory`, and `GET /api/kpis` read from PostgreSQL when database data is available.
 
+Successful API responses use a consistent wrapper:
+
+```json
+{
+  "success": true,
+  "data": {}
+}
+```
+
+Common error responses use ASP.NET Core `ProblemDetails`, including:
+
+- `400 Bad Request` for unsupported request payloads.
+- `404 Not Found` for missing import folders or missing import files.
+- `503 Service Unavailable` when PostgreSQL health checks fail.
+- `500 Internal Server Error` when import processing or database persistence fails unexpectedly.
+
 ## PostgreSQL
 
 `Inventory.Infrastructure` contains the EF Core persistence layer:
@@ -149,6 +165,8 @@ InventoryKpiSystem/reports/kpi-report-yyyyMMddHHmmss.json
 
 Unit tests live under `tests/Inventory.Application.Tests` and cover the application-level inventory and KPI behavior.
 
+API integration tests use `Microsoft.AspNetCore.Mvc.Testing` with `WebApplicationFactory`. Repository and database health services are replaced with test doubles so endpoint tests can run without a live PostgreSQL instance.
+
 ## Build
 
 ```bash
@@ -181,4 +199,4 @@ The API reads and writes the same file-based sample/runtime data under `Inventor
 
 - `dotnet build InventoryKpiSystem.sln` succeeded.
 - `dotnet test InventoryKpiSystem.sln` succeeded.
-- 5 tests passed.
+- 10 tests passed.
