@@ -60,6 +60,8 @@ The console project links the sample data from `InventoryKpiSystem/Data` into th
 
 `Inventory.Api` is an ASP.NET Core Web API project that exposes the existing application services over HTTP without changing the FIFO or KPI business logic.
 
+API endpoint mappings are organized under `src/Inventory.Api/Endpoints`, and API dependency registration lives under `src/Inventory.Api/Extensions`.
+
 Endpoints:
 
 - `GET /health`
@@ -68,11 +70,14 @@ Endpoints:
 - `GET /api/kpis`
 - `POST /api/import/run`
 
-OpenAPI documentation is available at:
+Swagger UI and OpenAPI documentation are available at:
 
 ```text
+/swagger
 /openapi/v1.json
 ```
+
+Database persistence is planned as future work. The current API still uses the file-based sample/runtime data under `InventoryKpiSystem/`.
 
 ## Reports
 
