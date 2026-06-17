@@ -34,12 +34,13 @@ InventoryKpiSystem/
 - Applies FIFO inventory logic by consuming the oldest purchase lots first.
 - Calculates inventory KPIs from the current inventory state.
 - Persists inventory state to `InventoryKpiSystem/inventory-snapshot.json`.
+- Persists imported products, invoices, inventory items, stock lots, and stock movements to PostgreSQL through the API import endpoint.
 - Tracks processed files in `InventoryKpiSystem/processed-files/processed-files.json`.
 - Writes JSON reports to `InventoryKpiSystem/reports`.
 - Exposes inventory, product, KPI, and import workflows through ASP.NET Core endpoints.
-- Includes a PostgreSQL EF Core foundation for future database persistence work.
+- Includes PostgreSQL EF Core repositories for persisted inventory state.
 
-File-based import behavior remains in place. The PostgreSQL schema foundation is available, but FIFO and KPI workflows have not been rewritten to use database persistence yet.
+File-based import behavior remains the source of input data. PostgreSQL is used for persisted inventory state after `POST /api/import/run`. FIFO and KPI business logic are unchanged.
 
 ## KPI Calculations
 
@@ -79,14 +80,15 @@ Swagger UI and OpenAPI documentation are available at:
 /openapi/v1.json
 ```
 
-Database-backed runtime workflows are planned as future work. The current API still uses the file-based sample/runtime data under `InventoryKpiSystem/` for import, inventory state, and reports.
+The current API still reads source import files from `InventoryKpiSystem/`. After import, `GET /api/products`, `GET /api/inventory`, and `GET /api/kpis` read from PostgreSQL when database data is available.
 
 ## PostgreSQL
 
-`Inventory.Infrastructure` contains the EF Core foundation:
+`Inventory.Infrastructure` contains the EF Core persistence layer:
 
 - `InventoryDbContext`
 - Entity mappings under `src/Inventory.Infrastructure/Persistence/Configurations`
+- Repository implementations under `src/Inventory.Infrastructure/Persistence/Repositories`
 - Initial migration under `src/Inventory.Infrastructure/Persistence/Migrations`
 
 The API registers `InventoryDbContext` with the `InventoryDb` connection string.
@@ -118,6 +120,22 @@ Database health check:
 ```text
 GET /health/db
 ```
+
+Run the database-backed import:
+
+```bash
+curl -X POST http://localhost:5258/api/import/run
+```
+
+Then view persisted data:
+
+```text
+GET /api/products
+GET /api/inventory
+GET /api/kpis
+```
+
+LLM features are not included in the current scope.
 
 ## Reports
 
