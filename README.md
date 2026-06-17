@@ -1,8 +1,8 @@
 # Inventory KPI Monitoring System
 
-Inventory KPI Monitoring System is a .NET 10 console application for importing product and invoice files, maintaining inventory state, and producing inventory KPI reports.
+Inventory KPI Monitoring System is a .NET 10 application for importing product and invoice files, maintaining inventory state, and producing inventory KPI reports.
 
-The current codebase uses a Clean Architecture layout. Domain rules and application services are separated from file parsing, JSON persistence, reporting, and console presentation.
+The current codebase uses a Clean Architecture layout. Domain rules and application services are separated from file parsing, JSON persistence, reporting, console presentation, and the HTTP API layer.
 
 ## Project Structure
 
@@ -12,6 +12,7 @@ src/
   Inventory.Application/     Interfaces, DTOs, import logic, FIFO costing, and KPI services
   Inventory.Infrastructure/  File readers, JSON snapshot storage, processed-file registry, reporting
   Inventory.ConsoleApp/      Console startup, file monitoring, and interactive report menu
+  Inventory.Api/             ASP.NET Core Web API endpoints and OpenAPI documentation
 
 tests/
   Inventory.Application.Tests/  Unit tests for application services
@@ -35,6 +36,9 @@ InventoryKpiSystem/
 - Persists inventory state to `InventoryKpiSystem/inventory-snapshot.json`.
 - Tracks processed files in `InventoryKpiSystem/processed-files/processed-files.json`.
 - Writes JSON reports to `InventoryKpiSystem/reports`.
+- Exposes inventory, product, KPI, and import workflows through ASP.NET Core endpoints.
+
+Persistence is still file-based in this task. No database, EF Core, authentication, or frontend is included.
 
 ## KPI Calculations
 
@@ -48,9 +52,27 @@ The application currently calculates:
 
 ## File Import
 
-Product and invoice data are file-based JSON inputs. The console app loads historical files at startup, then monitors the product and invoice folders for additional files.
+Product and invoice data are file-based JSON inputs. The console app loads historical files at startup, then monitors the product and invoice folders for additional files. The API can run the same import workflow through `POST /api/import/run`.
 
 The console project links the sample data from `InventoryKpiSystem/Data` into the build output, while still resolving the root sample data folder when run from the repository root.
+
+## API
+
+`Inventory.Api` is an ASP.NET Core Web API project that exposes the existing application services over HTTP without changing the FIFO or KPI business logic.
+
+Endpoints:
+
+- `GET /health`
+- `GET /api/products`
+- `GET /api/inventory`
+- `GET /api/kpis`
+- `POST /api/import/run`
+
+OpenAPI documentation is available at:
+
+```text
+/openapi/v1.json
+```
 
 ## Reports
 
@@ -76,13 +98,21 @@ dotnet build InventoryKpiSystem.sln
 dotnet test InventoryKpiSystem.sln
 ```
 
-## Run
+## Run Console App
 
 ```bash
 dotnet run --project src/Inventory.ConsoleApp/Inventory.ConsoleApp.csproj
 ```
 
 When running, the app syncs historical product and invoice data, saves the inventory snapshot, starts folder monitoring, and opens the console report menu.
+
+## Run API
+
+```bash
+dotnet run --project src/Inventory.Api/Inventory.Api.csproj
+```
+
+The API reads and writes the same file-based sample/runtime data under `InventoryKpiSystem/`.
 
 ## Current Validation
 
