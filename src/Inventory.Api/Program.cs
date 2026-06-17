@@ -5,7 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddInventoryApiDocumentation();
 builder.Services.AddInventoryApplication();
-builder.Services.AddInventoryInfrastructure(builder.Environment.ContentRootPath);
+builder.Services.AddInventoryInfrastructure(builder.Configuration, builder.Environment.ContentRootPath);
 
 var app = builder.Build();
 

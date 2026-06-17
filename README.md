@@ -37,8 +37,9 @@ InventoryKpiSystem/
 - Tracks processed files in `InventoryKpiSystem/processed-files/processed-files.json`.
 - Writes JSON reports to `InventoryKpiSystem/reports`.
 - Exposes inventory, product, KPI, and import workflows through ASP.NET Core endpoints.
+- Includes a PostgreSQL EF Core foundation for future database persistence work.
 
-Persistence is still file-based in this task. No database, EF Core, authentication, or frontend is included.
+File-based import behavior remains in place. The PostgreSQL schema foundation is available, but FIFO and KPI workflows have not been rewritten to use database persistence yet.
 
 ## KPI Calculations
 
@@ -65,6 +66,7 @@ API endpoint mappings are organized under `src/Inventory.Api/Endpoints`, and API
 Endpoints:
 
 - `GET /health`
+- `GET /health/db`
 - `GET /api/products`
 - `GET /api/inventory`
 - `GET /api/kpis`
@@ -77,7 +79,45 @@ Swagger UI and OpenAPI documentation are available at:
 /openapi/v1.json
 ```
 
-Database persistence is planned as future work. The current API still uses the file-based sample/runtime data under `InventoryKpiSystem/`.
+Database-backed runtime workflows are planned as future work. The current API still uses the file-based sample/runtime data under `InventoryKpiSystem/` for import, inventory state, and reports.
+
+## PostgreSQL
+
+`Inventory.Infrastructure` contains the EF Core foundation:
+
+- `InventoryDbContext`
+- Entity mappings under `src/Inventory.Infrastructure/Persistence/Configurations`
+- Initial migration under `src/Inventory.Infrastructure/Persistence/Migrations`
+
+The API registers `InventoryDbContext` with the `InventoryDb` connection string.
+
+Default connection string shape:
+
+```json
+{
+  "ConnectionStrings": {
+    "InventoryDb": "Host=localhost;Port=5432;Database=inventory_kpi;Username=postgres;Password=postgres"
+  }
+}
+```
+
+Apply migrations:
+
+```bash
+dotnet ef database update --project src/Inventory.Infrastructure/Inventory.Infrastructure.csproj --startup-project src/Inventory.Api/Inventory.Api.csproj --context InventoryDbContext
+```
+
+Create a new migration:
+
+```bash
+dotnet ef migrations add MigrationName --project src/Inventory.Infrastructure/Inventory.Infrastructure.csproj --startup-project src/Inventory.Api/Inventory.Api.csproj --context InventoryDbContext --output-dir Persistence/Migrations
+```
+
+Database health check:
+
+```text
+GET /health/db
+```
 
 ## Reports
 

@@ -2,7 +2,9 @@ using Inventory.Application.Interfaces;
 using Inventory.Application.Services;
 using Inventory.Infrastructure.FileParsing;
 using Inventory.Infrastructure.Json;
+using Inventory.Infrastructure.Persistence;
 using Inventory.Infrastructure.Reporting;
+using Microsoft.EntityFrameworkCore;
 
 namespace Inventory.Api.Extensions;
 
@@ -28,11 +30,20 @@ internal static class ServiceCollectionExtensions
 
     public static IServiceCollection AddInventoryInfrastructure(
         this IServiceCollection services,
+        IConfiguration configuration,
         string contentRootPath)
     {
         var dataPaths = ResolveDataPaths(contentRootPath);
+        var connectionString = configuration.GetConnectionString("InventoryDb");
+
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException("Connection string 'InventoryDb' is not configured.");
+        }
 
         services.AddSingleton(dataPaths);
+        services.AddDbContext<InventoryDbContext>(options =>
+            options.UseNpgsql(connectionString));
         services.AddSingleton<IInventorySnapshotStore>(_ =>
             new JsonInventorySnapshotStore(Path.Combine(dataPaths.RuntimeRoot, "inventory-snapshot.json")));
         services.AddSingleton<IInventoryService>(provider =>
