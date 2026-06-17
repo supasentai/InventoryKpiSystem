@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: inventory-postgres
+    environment:
+      POSTGRES_DB: inventory_kpi
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d inventory_kpi"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  inventory-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: inventory-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__InventoryDb: Host=postgres;Port=5432;Database=inventory_kpi;Username=postgres;Password=postgres
+    ports:
+      - "5258:8080"
+    volumes:
+      - ./InventoryKpiSystem:/app/InventoryKpiSystem
+
+volumes:
+  postgres-data:
