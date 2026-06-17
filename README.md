@@ -137,6 +137,12 @@ Database health check:
 GET /health/db
 ```
 
+Initialize the database for local `dotnet run` development:
+
+```bash
+dotnet ef database update --project src/Inventory.Infrastructure/Inventory.Infrastructure.csproj --startup-project src/Inventory.Api/Inventory.Api.csproj --context InventoryDbContext
+```
+
 Run the database-backed import:
 
 ```bash
@@ -152,6 +158,91 @@ GET /api/kpis
 ```
 
 LLM features are not included in the current scope.
+
+## Docker
+
+Run the API and PostgreSQL together:
+
+```bash
+docker compose up --build
+```
+
+This starts:
+
+- `inventory-api` at `http://localhost:5258`
+- `postgres` at `localhost:5432`
+
+The compose file sets:
+
+- `ASPNETCORE_ENVIRONMENT=Development`
+- `ConnectionStrings__InventoryDb=Host=postgres;Port=5432;Database=inventory_kpi;Username=postgres;Password=postgres`
+
+Stop containers:
+
+```bash
+docker compose down
+```
+
+Stop containers and remove the local PostgreSQL volume:
+
+```bash
+docker compose down -v
+```
+
+Apply migrations to the compose database from the host:
+
+```bash
+dotnet ef database update --project src/Inventory.Infrastructure/Inventory.Infrastructure.csproj --startup-project src/Inventory.Api/Inventory.Api.csproj --context InventoryDbContext
+```
+
+If running migrations from the host against Docker PostgreSQL, use `Host=localhost` in your local connection string.
+
+## Sample Workflow
+
+Step 1: Run Docker.
+
+```bash
+docker compose up --build
+```
+
+Step 2: Open Swagger.
+
+```text
+http://localhost:5258/swagger
+```
+
+Step 3: Run the import endpoint.
+
+```bash
+curl -X POST http://localhost:5258/api/import/run
+```
+
+Step 4: Query the API.
+
+```text
+GET http://localhost:5258/api/products
+GET http://localhost:5258/api/inventory
+GET http://localhost:5258/api/kpis
+```
+
+## Troubleshooting
+
+Database connection issues:
+
+- Confirm PostgreSQL is running with `docker compose ps`.
+- Check `GET /health/db`.
+- Confirm the connection string uses `Host=postgres` inside Docker and `Host=localhost` from the host.
+
+Migration issues:
+
+- Start PostgreSQL before running `dotnet ef database update`.
+- Verify the `InventoryDb` connection string points at the database you expect.
+- Recreate the local database volume with `docker compose down -v` only when you are okay losing local data.
+
+Port conflicts:
+
+- If `5258` is already in use, change the `inventory-api` port mapping in `docker-compose.yml`.
+- If `5432` is already in use, change the `postgres` port mapping or stop the other PostgreSQL instance.
 
 ## Reports
 
