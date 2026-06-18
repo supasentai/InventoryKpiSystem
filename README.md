@@ -1,117 +1,137 @@
 # Inventory KPI Monitoring System
 
-Inventory KPI Monitoring System is a .NET 10 application for importing product and invoice files, maintaining inventory state, and producing inventory KPI reports.
+[![CI](https://github.com/supasentai/InventoryKpiSystem/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/supasentai/InventoryKpiSystem/actions/workflows/ci.yml)
 
-The current codebase uses a Clean Architecture layout. Domain rules and application services are separated from file parsing, JSON persistence, reporting, console presentation, and the HTTP API layer.
+Inventory KPI Monitoring System is a .NET 10 portfolio project for importing product and invoice files, maintaining FIFO-based inventory state, calculating inventory KPIs, and exposing the workflow through an ASP.NET Core Web API.
 
-## Architecture Diagram
+The project is structured with Clean Architecture so business logic stays independent from file parsing, PostgreSQL persistence, Docker setup, logging, and the HTTP API layer.
+
+## CV-Ready Summary
+
+Built an Inventory KPI Monitoring System with .NET 10, ASP.NET Core Minimal APIs, Clean Architecture, EF Core, PostgreSQL, Docker Compose, Swagger, Serilog, and automated tests. The system imports file-based product and invoice data, applies FIFO inventory costing, persists inventory state, exposes product/inventory/KPI endpoints, seeds demo data for reviewers, and includes CI-ready validation.
+
+## Overview
+
+This repository demonstrates a practical backend system rather than a sample CRUD app. It includes:
+
+- Domain-driven inventory entities.
+- FIFO stock lot consumption.
+- KPI calculations for stock value, stock availability, sales activity, and inventory age.
+- File-based product and invoice import.
+- PostgreSQL persistence through EF Core repositories.
+- ASP.NET Core API endpoints with Swagger/OpenAPI.
+- Docker Compose setup for API + PostgreSQL.
+- Structured logging, request logging, global exception handling, and correlation ids.
+- Unit and integration tests.
+- Demo seed data so reviewers can run the project quickly.
+
+## Tech Stack
+
+- .NET 10
+- C#
+- ASP.NET Core Minimal APIs
+- Entity Framework Core
+- PostgreSQL
+- Npgsql
+- Docker and Docker Compose
+- Swagger/OpenAPI
+- Serilog
+- xUnit
+- FluentAssertions
+- Microsoft.AspNetCore.Mvc.Testing
+- GitHub Actions
+
+## Features
+
+- Imports products from `InventoryKpiSystem/Data/Products`.
+- Imports invoices from `InventoryKpiSystem/Data/Invoices`.
+- Processes purchase invoices as stock additions.
+- Processes sales invoices as stock reductions.
+- Applies FIFO logic by consuming the oldest purchase lots first.
+- Persists products, invoices, inventory items, stock lots, and stock movements to PostgreSQL.
+- Seeds demo products, inventory items, stock lots, and stock movements when PostgreSQL is empty.
+- Calculates:
+  - Total SKUs with stock or sales activity.
+  - Inventory value.
+  - Out-of-stock item count.
+  - Average daily sales.
+  - Average inventory age.
+- Writes JSON reports under `InventoryKpiSystem/reports`.
+- Tracks processed files under `InventoryKpiSystem/processed-files`.
+- Exposes API endpoints for health, products, inventory, KPIs, and import.
+
+## Architecture
 
 ```text
 Reviewer / Developer
         |
         v
-Inventory.Api  ->  Swagger, HTTP endpoints, logging, correlation id
+Inventory.Api
+  Swagger, Minimal API endpoints, logging, correlation id, ProblemDetails
         |
         v
-Inventory.Application  ->  import contracts, FIFO costing, KPI calculations
+Inventory.Application
+  Import contracts, FIFO costing, KPI calculations
         |
         v
-Inventory.Domain  ->  Product, InventoryItem, StockLot, StockMovement, Invoice
+Inventory.Domain
+  Product, InventoryItem, StockLot, StockMovement, Invoice, InvoiceLine
         ^
         |
-Inventory.Infrastructure  ->  file import, JSON reports, PostgreSQL, EF Core seed data
+Inventory.Infrastructure
+  File readers, JSON storage/reporting, EF Core, PostgreSQL repositories, seed data
 ```
 
-More details:
-
-- [Architecture notes](docs/architecture.md)
-- [API overview](docs/api-overview.md)
-
-## Project Structure
+Project layout:
 
 ```text
 src/
   Inventory.Domain/          Core entities, enums, and value objects
-  Inventory.Application/     Interfaces, DTOs, import logic, FIFO costing, and KPI services
-  Inventory.Infrastructure/  File readers, JSON storage/reporting, PostgreSQL persistence, and seed data
-  Inventory.ConsoleApp/      Console startup, file monitoring, and interactive report menu
+  Inventory.Application/     Interfaces, DTOs, import logic, FIFO costing, KPI services
+  Inventory.Infrastructure/  File readers, JSON storage/reporting, PostgreSQL persistence, seed data
+  Inventory.ConsoleApp/      Console startup, file monitoring, report menu
   Inventory.Api/             ASP.NET Core Web API endpoints and OpenAPI documentation
 
 tests/
-  Inventory.Application.Tests/  Unit tests for application services
+  Inventory.Application.Tests/  Unit and integration tests
 
 docs/
   architecture.md               Clean Architecture overview
   api-overview.md               API usage notes
   screenshots/                  Project walkthrough screenshots
-
-InventoryKpiSystem/
-  Data/Products/product.txt     Sample product import data
-  Data/Invoices/*.txt           Sample invoice import data
-  processed-files/              Runtime idempotency registry
-  reports/                      JSON KPI report output
-  inventory-snapshot.json       Runtime inventory snapshot
 ```
 
-## Core Behavior
+More documentation:
 
-- Imports product files from `InventoryKpiSystem/Data/Products`.
-- Imports invoice files from `InventoryKpiSystem/Data/Invoices`.
-- Processes purchase invoices as stock additions.
-- Processes sales invoices as stock reductions.
-- Applies FIFO inventory logic by consuming the oldest purchase lots first.
-- Calculates inventory KPIs from the current inventory state.
-- Persists inventory state to `InventoryKpiSystem/inventory-snapshot.json`.
-- Persists imported products, invoices, inventory items, stock lots, and stock movements to PostgreSQL through the API import endpoint.
-- Seeds demo products, inventory items, stock lots, and stock movements when PostgreSQL is empty.
-- Tracks processed files in `InventoryKpiSystem/processed-files/processed-files.json`.
-- Writes JSON reports to `InventoryKpiSystem/reports`.
-- Exposes inventory, product, KPI, and import workflows through ASP.NET Core endpoints.
-- Includes PostgreSQL EF Core repositories for persisted inventory state.
+- [Architecture notes](docs/architecture.md)
+- [API overview](docs/api-overview.md)
 
-File-based import behavior remains the source of input data. PostgreSQL is used for persisted inventory state after `POST /api/import/run`. FIFO and KPI business logic are unchanged.
+## API Endpoints
 
-## KPI Calculations
+Swagger UI:
 
-The application currently calculates:
+```text
+http://localhost:5258/swagger
+```
 
-- Total SKUs with stock or sales activity
-- Total stock value
-- Out-of-stock item count
-- Average daily sales
-- Average inventory age
+OpenAPI JSON:
 
-## File Import
-
-Product and invoice data are file-based JSON inputs. The console app loads historical files at startup, then monitors the product and invoice folders for additional files. The API can run the same import workflow through `POST /api/import/run`.
-
-The console project links the sample data from `InventoryKpiSystem/Data` into the build output, while still resolving the root sample data folder when run from the repository root.
-
-## API
-
-`Inventory.Api` is an ASP.NET Core Web API project that exposes the existing application services over HTTP without changing the FIFO or KPI business logic.
-
-API endpoint mappings are organized under `src/Inventory.Api/Endpoints`, and API dependency registration lives under `src/Inventory.Api/Extensions`.
+```text
+http://localhost:5258/openapi/v1.json
+```
 
 Endpoints:
 
-- `GET /health`
-- `GET /health/db`
-- `GET /api/products`
-- `GET /api/inventory`
-- `GET /api/kpis`
-- `POST /api/import/run`
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/health` | Checks whether the API is running. |
+| GET | `/health/db` | Checks PostgreSQL connectivity. |
+| GET | `/api/products` | Lists persisted products. |
+| GET | `/api/inventory` | Lists inventory quantities, value, sales, and FIFO purchase lots. |
+| GET | `/api/kpis` | Calculates inventory KPI values. |
+| POST | `/api/import/run` | Imports file-based product and invoice data, then persists the resulting state. |
 
-Swagger UI and OpenAPI documentation are available at:
-
-```text
-/swagger
-/openapi/v1.json
-```
-
-The current API still reads source import files from `InventoryKpiSystem/`. After import, `GET /api/products`, `GET /api/inventory`, and `GET /api/kpis` read from PostgreSQL when database data is available.
-
-Successful API responses use a consistent wrapper:
+Successful API responses use:
 
 ```json
 {
@@ -120,24 +140,19 @@ Successful API responses use a consistent wrapper:
 }
 ```
 
-Common error responses use ASP.NET Core `ProblemDetails`, including:
+Errors use ASP.NET Core `ProblemDetails`.
 
-- `400 Bad Request` for unsupported request payloads.
-- `404 Not Found` for missing import folders or missing import files.
-- `503 Service Unavailable` when PostgreSQL health checks fail.
-- `500 Internal Server Error` when import processing or database persistence fails unexpectedly.
-
-Every API response includes an `X-Correlation-Id` header. Clients may provide this header, or the API will generate one for the request.
+Every API response includes `X-Correlation-Id`.
 
 ### API Examples
 
-Health check:
+Health:
 
 ```bash
 curl http://localhost:5258/health
 ```
 
-Expected response:
+Sample response:
 
 ```json
 {
@@ -155,7 +170,7 @@ Products:
 curl http://localhost:5258/api/products
 ```
 
-Expected sample response:
+Sample response:
 
 ```json
 {
@@ -176,7 +191,7 @@ Inventory:
 curl http://localhost:5258/api/inventory
 ```
 
-Expected sample response:
+Sample response:
 
 ```json
 {
@@ -208,7 +223,7 @@ KPIs:
 curl http://localhost:5258/api/kpis
 ```
 
-Expected sample response:
+Sample response:
 
 ```json
 {
@@ -225,13 +240,13 @@ Expected sample response:
 }
 ```
 
-Run file-based import:
+Run import:
 
 ```bash
 curl -X POST http://localhost:5258/api/import/run
 ```
 
-Expected sample response:
+Sample response:
 
 ```json
 {
@@ -245,111 +260,9 @@ Expected sample response:
 }
 ```
 
-### Screenshots
+## Docker Setup
 
-![Swagger UI](docs/screenshots/swagger-ui.svg)
-
-![Health endpoint](docs/screenshots/health-endpoint.svg)
-
-![KPI endpoint](docs/screenshots/kpi-endpoint.svg)
-
-![Docker containers running](docs/screenshots/docker-containers.svg)
-
-## Observability
-
-`Inventory.Api` uses Serilog for structured logging.
-
-Logs are written to:
-
-```text
-logs/inventory-api-yyyyMMdd.log
-```
-
-The API also writes logs to the console, which is useful for `dotnet run` and Docker Compose.
-
-Logged events include:
-
-- Application startup and shutdown.
-- HTTP request method, route, status code, and duration.
-- Import execution start, completion, and failures.
-- PostgreSQL health check execution and result.
-- Unexpected exceptions with stack traces.
-
-Correlation id behavior:
-
-- Incoming `X-Correlation-Id` values are reused when provided.
-- A new correlation id is generated when the request does not provide one.
-- The correlation id is included in logs and returned in the `X-Correlation-Id` response header.
-- Unexpected error responses include the correlation id in `ProblemDetails.extensions.correlationId`.
-
-Sensitive values such as connection strings and credentials should not be logged.
-
-## PostgreSQL
-
-`Inventory.Infrastructure` contains the EF Core persistence layer:
-
-- `InventoryDbContext`
-- Entity mappings under `src/Inventory.Infrastructure/Persistence/Configurations`
-- Repository implementations under `src/Inventory.Infrastructure/Persistence/Repositories`
-- Initial migration under `src/Inventory.Infrastructure/Persistence/Migrations`
-
-The API registers `InventoryDbContext` with the `InventoryDb` connection string.
-
-On API startup, EF Core migrations are applied and demo data is inserted only when PostgreSQL is empty. Existing data is left unchanged.
-
-Default connection string shape:
-
-```json
-{
-  "ConnectionStrings": {
-    "InventoryDb": "Host=localhost;Port=5432;Database=inventory_kpi;Username=postgres;Password=postgres"
-  }
-}
-```
-
-Apply migrations:
-
-```bash
-dotnet ef database update --project src/Inventory.Infrastructure/Inventory.Infrastructure.csproj --startup-project src/Inventory.Api/Inventory.Api.csproj --context InventoryDbContext
-```
-
-Create a new migration:
-
-```bash
-dotnet ef migrations add MigrationName --project src/Inventory.Infrastructure/Inventory.Infrastructure.csproj --startup-project src/Inventory.Api/Inventory.Api.csproj --context InventoryDbContext --output-dir Persistence/Migrations
-```
-
-Database health check:
-
-```text
-GET /health/db
-```
-
-Initialize the database for local `dotnet run` development:
-
-```bash
-dotnet ef database update --project src/Inventory.Infrastructure/Inventory.Infrastructure.csproj --startup-project src/Inventory.Api/Inventory.Api.csproj --context InventoryDbContext
-```
-
-Run the database-backed import:
-
-```bash
-curl -X POST http://localhost:5258/api/import/run
-```
-
-Then view persisted data:
-
-```text
-GET /api/products
-GET /api/inventory
-GET /api/kpis
-```
-
-LLM features are not included in the current scope.
-
-## Docker
-
-Run the API and PostgreSQL together:
+Run the API and PostgreSQL:
 
 ```bash
 docker compose up --build
@@ -360,12 +273,7 @@ This starts:
 - `inventory-api` at `http://localhost:5258`
 - `postgres` at `localhost:5432`
 
-The API applies migrations and seeds demo inventory data during startup when the database is empty. A reviewer can run Docker Compose, open Swagger, and query the API without manually running import first.
-
-The compose file sets:
-
-- `ASPNETCORE_ENVIRONMENT=Development`
-- `ConnectionStrings__InventoryDb=Host=postgres;Port=5432;Database=inventory_kpi;Username=postgres;Password=postgres`
+On startup, the API applies EF Core migrations and inserts demo seed data only when PostgreSQL is empty. That means reviewers can open Swagger and query useful data without running manual imports first.
 
 Stop containers:
 
@@ -379,49 +287,120 @@ Stop containers and remove the local PostgreSQL volume:
 docker compose down -v
 ```
 
-Apply migrations to the compose database from the host:
+Sample reviewer flow:
+
+1. Run Docker Compose.
+
+   ```bash
+   docker compose up --build
+   ```
+
+2. Open Swagger.
+
+   ```text
+   http://localhost:5258/swagger
+   ```
+
+3. Query seeded demo data.
+
+   ```text
+   GET http://localhost:5258/api/products
+   GET http://localhost:5258/api/inventory
+   GET http://localhost:5258/api/kpis
+   ```
+
+4. Optionally run import to replace demo state with file-based sample data.
+
+   ```bash
+   curl -X POST http://localhost:5258/api/import/run
+   ```
+
+5. Query the API again.
+
+   ```text
+   GET http://localhost:5258/api/products
+   GET http://localhost:5258/api/inventory
+   GET http://localhost:5258/api/kpis
+   ```
+
+## Database
+
+Default connection string shape:
+
+```json
+{
+  "ConnectionStrings": {
+    "InventoryDb": "Host=localhost;Port=5432;Database=inventory_kpi;Username=postgres;Password=postgres"
+  }
+}
+```
+
+Apply migrations from the host:
 
 ```bash
 dotnet ef database update --project src/Inventory.Infrastructure/Inventory.Infrastructure.csproj --startup-project src/Inventory.Api/Inventory.Api.csproj --context InventoryDbContext
 ```
 
-If running migrations from the host against Docker PostgreSQL, use `Host=localhost` in your local connection string.
+When running migrations from the host against Docker PostgreSQL, use `Host=localhost`. Inside Docker Compose, the API uses `Host=postgres`.
 
-## Sample Workflow
+## Testing
 
-Step 1: Run Docker Compose.
-
-```bash
-docker compose up --build
-```
-
-Step 2: Open Swagger.
-
-```text
-http://localhost:5258/swagger
-```
-
-Step 3: Query seeded demo data.
-
-```text
-GET http://localhost:5258/api/products
-GET http://localhost:5258/api/inventory
-GET http://localhost:5258/api/kpis
-```
-
-Step 4: Optionally run the import endpoint to replace demo data with file-based sample data.
+Build:
 
 ```bash
-curl -X POST http://localhost:5258/api/import/run
+dotnet build InventoryKpiSystem.sln
 ```
 
-Step 5: Query API again.
+Test:
+
+```bash
+dotnet test InventoryKpiSystem.sln
+```
+
+Tests include:
+
+- Unit tests for application-level FIFO and KPI behavior.
+- API integration tests using `Microsoft.AspNetCore.Mvc.Testing`.
+- Test doubles for repositories and database health checks so integration tests do not require a live PostgreSQL instance.
+
+CI runs on GitHub Actions for pull requests and pushes to `main`.
+
+## Observability
+
+The API uses Serilog for structured logging.
+
+Logs are written to:
 
 ```text
-GET http://localhost:5258/api/products
-GET http://localhost:5258/api/inventory
-GET http://localhost:5258/api/kpis
+logs/inventory-api-yyyyMMdd.log
 ```
+
+The API also logs to the console for local development and Docker Compose.
+
+Logged events include:
+
+- Application startup and shutdown.
+- HTTP method, route, status code, and duration.
+- Import execution start, completion, and failures.
+- PostgreSQL health check execution and result.
+- Unexpected exceptions with stack traces.
+
+Correlation id behavior:
+
+- Incoming `X-Correlation-Id` values are reused when provided.
+- A new correlation id is generated when a request does not provide one.
+- The correlation id is included in logs and returned in the `X-Correlation-Id` response header.
+- Unexpected error responses include `ProblemDetails.extensions.correlationId`.
+
+## Screenshots
+
+![Swagger UI](docs/screenshots/swagger-ui.svg)
+
+![Health endpoint](docs/screenshots/health-endpoint.svg)
+
+![KPI endpoint](docs/screenshots/kpi-endpoint.svg)
+
+![Docker containers running](docs/screenshots/docker-containers.svg)
 
 ## Troubleshooting
 
@@ -429,13 +408,13 @@ Database connection issues:
 
 - Confirm PostgreSQL is running with `docker compose ps`.
 - Check `GET /health/db`.
-- Confirm the connection string uses `Host=postgres` inside Docker and `Host=localhost` from the host.
+- Use `Host=postgres` inside Docker and `Host=localhost` from the host.
 
 Migration issues:
 
 - Start PostgreSQL before running `dotnet ef database update`.
-- Verify the `InventoryDb` connection string points at the database you expect.
-- Recreate the local database volume with `docker compose down -v` only when you are okay losing local data.
+- Verify that the `InventoryDb` connection string points to the expected database.
+- Use `docker compose down -v` only when you are okay deleting local PostgreSQL data.
 
 Port conflicts:
 
@@ -445,54 +424,35 @@ Port conflicts:
 Logging and correlation issues:
 
 - Check console output first when running with `dotnet run` or Docker Compose.
-- Check the rolling log files under `logs/` for request failures and stack traces.
-- Use the `X-Correlation-Id` response header to find all logs for a specific request.
-- If `logs/` is not created, confirm the API process has write permission to the current working directory.
+- Check rolling log files under `logs/`.
+- Use the `X-Correlation-Id` response header to find logs for a specific request.
 
-## Reports
+## Run Without Docker
 
-KPI reports are written as formatted JSON files with timestamped names:
-
-```text
-InventoryKpiSystem/reports/kpi-report-yyyyMMddHHmmss.json
-```
-
-## Tests
-
-Unit tests live under `tests/Inventory.Application.Tests` and cover the application-level inventory and KPI behavior.
-
-API integration tests use `Microsoft.AspNetCore.Mvc.Testing` with `WebApplicationFactory`. Repository and database health services are replaced with test doubles so endpoint tests can run without a live PostgreSQL instance.
-
-## Build
-
-```bash
-dotnet build InventoryKpiSystem.sln
-```
-
-## Test
-
-```bash
-dotnet test InventoryKpiSystem.sln
-```
-
-## Run Console App
-
-```bash
-dotnet run --project src/Inventory.ConsoleApp/Inventory.ConsoleApp.csproj
-```
-
-When running, the app syncs historical product and invoice data, saves the inventory snapshot, starts folder monitoring, and opens the console report menu.
-
-## Run API
+Run the API:
 
 ```bash
 dotnet run --project src/Inventory.Api/Inventory.Api.csproj
 ```
 
-The API reads and writes the same file-based sample/runtime data under `InventoryKpiSystem/`.
+Run the console app:
+
+```bash
+dotnet run --project src/Inventory.ConsoleApp/Inventory.ConsoleApp.csproj
+```
+
+The API and console app use the sample/runtime data under `InventoryKpiSystem/`.
+
+## Future Improvements
+
+- Add pagination and filtering for larger product and inventory datasets.
+- Add richer import result reporting.
+- Add more database-backed integration tests.
+- Add deployment documentation for a managed cloud environment.
+- Add performance benchmarks for large invoice batches.
 
 ## Current Validation
 
-- `dotnet build InventoryKpiSystem.sln` succeeded.
-- `dotnet test InventoryKpiSystem.sln` succeeded.
-- 10 tests passed.
+- `dotnet build InventoryKpiSystem.sln`
+- `dotnet test InventoryKpiSystem.sln`
+- GitHub Actions CI
