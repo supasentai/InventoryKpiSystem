@@ -26,7 +26,13 @@ internal static class HealthEndpoints
 
             try
             {
+                logger.LogInformation("Running database health check.");
+
                 var canConnect = await databaseHealthChecker.CanConnectAsync(cancellationToken);
+
+                logger.LogInformation(
+                    "Database health check completed. CanConnect: {CanConnect}",
+                    canConnect);
 
                 return canConnect
                     ? Results.Ok(ApiResponse<object>.Ok(new

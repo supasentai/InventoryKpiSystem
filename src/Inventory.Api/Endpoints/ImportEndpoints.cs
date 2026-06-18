@@ -76,6 +76,11 @@ internal static class ImportEndpoints
 
             try
             {
+                logger.LogInformation(
+                    "Import execution started. ProductFileCount: {ProductFileCount}; InvoiceFileCount: {InvoiceFileCount}",
+                    productFiles.Count,
+                    invoiceFiles.Count);
+
                 foreach (var file in productFiles)
                 {
                     products.AddRange(await productFileReader.ReadAsync(file, cancellationToken));
@@ -97,6 +102,13 @@ internal static class ImportEndpoints
                     inventoryService.GetAllInventory(),
                     stockMovements,
                     cancellationToken);
+
+                logger.LogInformation(
+                    "Import execution completed. ProductsPersisted: {ProductsPersisted}; InvoicesPersisted: {InvoicesPersisted}; StockMovementsPersisted: {StockMovementsPersisted}; InventoryItems: {InventoryItems}",
+                    products.Count,
+                    invoices.Count,
+                    stockMovements.Count,
+                    inventoryService.Items.Count);
 
                 return Results.Ok(ApiResponse<object>.Ok(new
                 {

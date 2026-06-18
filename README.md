@@ -98,6 +98,37 @@ Common error responses use ASP.NET Core `ProblemDetails`, including:
 - `503 Service Unavailable` when PostgreSQL health checks fail.
 - `500 Internal Server Error` when import processing or database persistence fails unexpectedly.
 
+Every API response includes an `X-Correlation-Id` header. Clients may provide this header, or the API will generate one for the request.
+
+## Observability
+
+`Inventory.Api` uses Serilog for structured logging.
+
+Logs are written to:
+
+```text
+logs/inventory-api-yyyyMMdd.log
+```
+
+The API also writes logs to the console, which is useful for `dotnet run` and Docker Compose.
+
+Logged events include:
+
+- Application startup and shutdown.
+- HTTP request method, route, status code, and duration.
+- Import execution start, completion, and failures.
+- PostgreSQL health check execution and result.
+- Unexpected exceptions with stack traces.
+
+Correlation id behavior:
+
+- Incoming `X-Correlation-Id` values are reused when provided.
+- A new correlation id is generated when the request does not provide one.
+- The correlation id is included in logs and returned in the `X-Correlation-Id` response header.
+- Unexpected error responses include the correlation id in `ProblemDetails.extensions.correlationId`.
+
+Sensitive values such as connection strings and credentials should not be logged.
+
 ## PostgreSQL
 
 `Inventory.Infrastructure` contains the EF Core persistence layer:
@@ -243,6 +274,13 @@ Port conflicts:
 
 - If `5258` is already in use, change the `inventory-api` port mapping in `docker-compose.yml`.
 - If `5432` is already in use, change the `postgres` port mapping or stop the other PostgreSQL instance.
+
+Logging and correlation issues:
+
+- Check console output first when running with `dotnet run` or Docker Compose.
+- Check the rolling log files under `logs/` for request failures and stack traces.
+- Use the `X-Correlation-Id` response header to find all logs for a specific request.
+- If `logs/` is not created, confirm the API process has write permission to the current working directory.
 
 ## Reports
 
