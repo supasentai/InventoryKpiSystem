@@ -63,4 +63,4 @@ Docker startup applies EF Core migrations and seeds demo data when the database 
 - API exposes application behavior over HTTP.
 - Tests cover application services and API endpoints.
 
-No frontend, authentication, message queue, cache, Kubernetes, or LLM features are included.
+No frontend, authentication, message queue, cache, or Kubernetes features are included.
