@@ -33,7 +33,7 @@ More details:
 src/
   Inventory.Domain/          Core entities, enums, and value objects
   Inventory.Application/     Interfaces, DTOs, import logic, FIFO costing, and KPI services
-  Inventory.Infrastructure/  File readers, JSON snapshot storage, PostgreSQL persistence, seed data
+  Inventory.Infrastructure/  File readers, JSON storage/reporting, PostgreSQL persistence, and seed data
   Inventory.ConsoleApp/      Console startup, file monitoring, and interactive report menu
   Inventory.Api/             ASP.NET Core Web API endpoints and OpenAPI documentation
 
@@ -389,7 +389,7 @@ If running migrations from the host against Docker PostgreSQL, use `Host=localho
 
 ## Sample Workflow
 
-Step 1: Run Docker.
+Step 1: Run Docker Compose.
 
 ```bash
 docker compose up --build
@@ -401,7 +401,7 @@ Step 2: Open Swagger.
 http://localhost:5258/swagger
 ```
 
-Step 3: Query the seeded demo data.
+Step 3: Query seeded demo data.
 
 ```text
 GET http://localhost:5258/api/products
@@ -415,7 +415,7 @@ Step 4: Optionally run the import endpoint to replace demo data with file-based 
 curl -X POST http://localhost:5258/api/import/run
 ```
 
-Step 5: Query the API again.
+Step 5: Query API again.
 
 ```text
 GET http://localhost:5258/api/products
