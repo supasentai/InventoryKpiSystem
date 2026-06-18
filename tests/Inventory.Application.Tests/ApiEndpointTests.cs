@@ -43,6 +43,8 @@ public class ApiEndpointTests : IClassFixture<ApiEndpointTests.InventoryApiFacto
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            builder.UseEnvironment("Testing");
+
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IDatabaseHealthChecker>();

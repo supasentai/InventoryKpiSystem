@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="420" viewBox="0 0 960 420" role="img" aria-labelledby="title desc">
+  <title id="title">Health endpoint screenshot</title>
+  <desc id="desc">Browser-style view of the health endpoint JSON response.</desc>
+  <rect width="960" height="420" fill="#f6f8fa"/>
+  <rect x="56" y="44" width="848" height="332" rx="12" fill="#ffffff" stroke="#d0d7de"/>
+  <rect x="56" y="44" width="848" height="46" rx="12" fill="#24292f"/>
+  <circle cx="82" cy="67" r="6" fill="#ff6b6b"/>
+  <circle cx="104" cy="67" r="6" fill="#ffd43b"/>
+  <circle cx="126" cy="67" r="6" fill="#51cf66"/>
+  <rect x="154" y="55" width="690" height="24" rx="12" fill="#ffffff"/>
+  <text x="174" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#24292f">http://localhost:5258/health</text>
+  <text x="84" y="132" font-family="Consolas, monospace" font-size="16" fill="#0969da">HTTP/1.1 200 OK</text>
+  <text x="84" y="162" font-family="Consolas, monospace" font-size="14" fill="#57606a">X-Correlation-Id: 9f58f9b17f5242f78bb0bd06a0e8fbc1</text>
+  <text x="84" y="208" font-family="Consolas, monospace" font-size="16" fill="#24292f">{</text>
+  <text x="112" y="236" font-family="Consolas, monospace" font-size="16" fill="#24292f">"success": true,</text>
+  <text x="112" y="264" font-family="Consolas, monospace" font-size="16" fill="#24292f">"data": {</text>
+  <text x="140" y="292" font-family="Consolas, monospace" font-size="16" fill="#24292f">"status": "Healthy",</text>
+  <text x="140" y="320" font-family="Consolas, monospace" font-size="16" fill="#24292f">"checkedAt": "2026-06-18T00:00:00Z"</text>
+  <text x="112" y="348" font-family="Consolas, monospace" font-size="16" fill="#24292f">}</text>
+  <text x="84" y="376" font-family="Consolas, monospace" font-size="16" fill="#24292f">}</text>
+</svg>
