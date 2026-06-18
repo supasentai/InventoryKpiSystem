@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560" role="img" aria-labelledby="title desc">
+  <title id="title">Swagger UI screenshot</title>
+  <desc id="desc">Inventory KPI API Swagger UI with available endpoints.</desc>
+  <rect width="960" height="560" fill="#f6f8fa"/>
+  <rect x="48" y="40" width="864" height="480" rx="12" fill="#ffffff" stroke="#d0d7de"/>
+  <rect x="48" y="40" width="864" height="56" rx="12" fill="#17324d"/>
+  <text x="78" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="22" fill="#ffffff">Swagger UI - Inventory KPI Monitoring System</text>
+  <text x="78" y="132" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#24292f">Inventory.Api</text>
+  <text x="78" y="160" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#57606a">OpenAPI documentation for products, inventory, KPIs, import, and health checks.</text>
+  <g font-family="Segoe UI, Arial, sans-serif" font-size="15">
+    <rect x="78" y="198" width="804" height="42" rx="6" fill="#e7f5ff" stroke="#74c0fc"/>
+    <text x="98" y="225" fill="#0969da">GET</text>
+    <text x="160" y="225" fill="#24292f">/health</text>
+    <rect x="78" y="252" width="804" height="42" rx="6" fill="#e7f5ff" stroke="#74c0fc"/>
+    <text x="98" y="279" fill="#0969da">GET</text>
+    <text x="160" y="279" fill="#24292f">/health/db</text>
+    <rect x="78" y="306" width="804" height="42" rx="6" fill="#e6fcf5" stroke="#63e6be"/>
+    <text x="98" y="333" fill="#087f5b">GET</text>
+    <text x="160" y="333" fill="#24292f">/api/products</text>
+    <rect x="78" y="360" width="804" height="42" rx="6" fill="#e6fcf5" stroke="#63e6be"/>
+    <text x="98" y="387" fill="#087f5b">GET</text>
+    <text x="160" y="387" fill="#24292f">/api/inventory</text>
+    <rect x="78" y="414" width="804" height="42" rx="6" fill="#e6fcf5" stroke="#63e6be"/>
+    <text x="98" y="441" fill="#087f5b">GET</text>
+    <text x="160" y="441" fill="#24292f">/api/kpis</text>
+    <rect x="78" y="468" width="804" height="42" rx="6" fill="#fff4e6" stroke="#ffa94d"/>
+    <text x="98" y="495" fill="#d9480f">POST</text>
+    <text x="160" y="495" fill="#24292f">/api/import/run</text>
+  </g>
+</svg>

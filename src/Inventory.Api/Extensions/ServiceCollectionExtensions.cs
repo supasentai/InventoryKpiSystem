@@ -5,6 +5,7 @@ using Inventory.Infrastructure.FileParsing;
 using Inventory.Infrastructure.Json;
 using Inventory.Infrastructure.Persistence;
 using Inventory.Infrastructure.Persistence.Repositories;
+using Inventory.Infrastructure.Persistence.Seed;
 using Inventory.Infrastructure.Reporting;
 using Microsoft.EntityFrameworkCore;
 
@@ -46,6 +47,7 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton(dataPaths);
         services.AddDbContext<InventoryDbContext>(options =>
             options.UseNpgsql(connectionString));
+        services.AddScoped<InventoryDatabaseSeeder>();
         services.AddSingleton<IInventorySnapshotStore>(_ =>
             new JsonInventorySnapshotStore(Path.Combine(dataPaths.RuntimeRoot, "inventory-snapshot.json")));
         services.AddSingleton<IInventoryService>(provider =>

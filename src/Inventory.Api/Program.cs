@@ -1,6 +1,7 @@
 using Inventory.Api.Endpoints;
 using Inventory.Api.Extensions;
 using Inventory.Api.Middleware;
+using Inventory.Api.Services;
 using Serilog;
 using Serilog.Events;
 
@@ -26,6 +27,10 @@ try
     builder.Services.AddInventoryApiDocumentation();
     builder.Services.AddInventoryApplication();
     builder.Services.AddInventoryInfrastructure(builder.Configuration, builder.Environment.ContentRootPath);
+    if (!builder.Environment.IsEnvironment("Testing"))
+    {
+        builder.Services.AddHostedService<DatabaseInitializationHostedService>();
+    }
 
     var app = builder.Build();
 

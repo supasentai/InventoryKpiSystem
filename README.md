@@ -4,18 +4,46 @@ Inventory KPI Monitoring System is a .NET 10 application for importing product a
 
 The current codebase uses a Clean Architecture layout. Domain rules and application services are separated from file parsing, JSON persistence, reporting, console presentation, and the HTTP API layer.
 
+## Architecture Diagram
+
+```text
+Reviewer / Developer
+        |
+        v
+Inventory.Api  ->  Swagger, HTTP endpoints, logging, correlation id
+        |
+        v
+Inventory.Application  ->  import contracts, FIFO costing, KPI calculations
+        |
+        v
+Inventory.Domain  ->  Product, InventoryItem, StockLot, StockMovement, Invoice
+        ^
+        |
+Inventory.Infrastructure  ->  file import, JSON reports, PostgreSQL, EF Core seed data
+```
+
+More details:
+
+- [Architecture notes](docs/architecture.md)
+- [API overview](docs/api-overview.md)
+
 ## Project Structure
 
 ```text
 src/
   Inventory.Domain/          Core entities, enums, and value objects
   Inventory.Application/     Interfaces, DTOs, import logic, FIFO costing, and KPI services
-  Inventory.Infrastructure/  File readers, JSON snapshot storage, processed-file registry, reporting
+  Inventory.Infrastructure/  File readers, JSON storage/reporting, PostgreSQL persistence, and seed data
   Inventory.ConsoleApp/      Console startup, file monitoring, and interactive report menu
   Inventory.Api/             ASP.NET Core Web API endpoints and OpenAPI documentation
 
 tests/
   Inventory.Application.Tests/  Unit tests for application services
+
+docs/
+  architecture.md               Clean Architecture overview
+  api-overview.md               API usage notes
+  screenshots/                  Project walkthrough screenshots
 
 InventoryKpiSystem/
   Data/Products/product.txt     Sample product import data
@@ -35,6 +63,7 @@ InventoryKpiSystem/
 - Calculates inventory KPIs from the current inventory state.
 - Persists inventory state to `InventoryKpiSystem/inventory-snapshot.json`.
 - Persists imported products, invoices, inventory items, stock lots, and stock movements to PostgreSQL through the API import endpoint.
+- Seeds demo products, inventory items, stock lots, and stock movements when PostgreSQL is empty.
 - Tracks processed files in `InventoryKpiSystem/processed-files/processed-files.json`.
 - Writes JSON reports to `InventoryKpiSystem/reports`.
 - Exposes inventory, product, KPI, and import workflows through ASP.NET Core endpoints.
@@ -100,6 +129,132 @@ Common error responses use ASP.NET Core `ProblemDetails`, including:
 
 Every API response includes an `X-Correlation-Id` header. Clients may provide this header, or the API will generate one for the request.
 
+### API Examples
+
+Health check:
+
+```bash
+curl http://localhost:5258/health
+```
+
+Expected response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "status": "Healthy",
+    "checkedAt": "2026-06-18T00:00:00Z"
+  }
+}
+```
+
+Products:
+
+```bash
+curl http://localhost:5258/api/products
+```
+
+Expected sample response:
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "productId": "DEMO-CHAIR",
+      "itemCode": "CHAIR-001",
+      "name": "Ergonomic Office Chair"
+    }
+  ]
+}
+```
+
+Inventory:
+
+```bash
+curl http://localhost:5258/api/inventory
+```
+
+Expected sample response:
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "productId": "DEMO-CHAIR",
+      "itemCode": "CHAIR-001",
+      "name": "Ergonomic Office Chair",
+      "quantityOnHand": 12,
+      "totalSoldQuantity": 8,
+      "totalStockValue": 1525.00,
+      "purchaseBatches": [
+        {
+          "purchaseDate": "2026-01-05T00:00:00Z",
+          "unitCost": 125.00,
+          "initialQuantity": 20,
+          "remainingQuantity": 7
+        }
+      ]
+    }
+  ]
+}
+```
+
+KPIs:
+
+```bash
+curl http://localhost:5258/api/kpis
+```
+
+Expected sample response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "generatedAt": "2026-06-18T00:00:00",
+    "totalSkus": 4,
+    "outOfStockItems": 0,
+    "averageDailySales": 1.88,
+    "averageInventoryAge": 28.93,
+    "inventoryValue": 5870.00,
+    "topProducts": []
+  }
+}
+```
+
+Run file-based import:
+
+```bash
+curl -X POST http://localhost:5258/api/import/run
+```
+
+Expected sample response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Import completed.",
+    "productFilesProcessed": 1,
+    "invoiceFilesProcessed": 2,
+    "persistedToDatabase": true
+  }
+}
+```
+
+### Screenshots
+
+![Swagger UI](docs/screenshots/swagger-ui.svg)
+
+![Health endpoint](docs/screenshots/health-endpoint.svg)
+
+![KPI endpoint](docs/screenshots/kpi-endpoint.svg)
+
+![Docker containers running](docs/screenshots/docker-containers.svg)
+
 ## Observability
 
 `Inventory.Api` uses Serilog for structured logging.
@@ -139,6 +294,8 @@ Sensitive values such as connection strings and credentials should not be logged
 - Initial migration under `src/Inventory.Infrastructure/Persistence/Migrations`
 
 The API registers `InventoryDbContext` with the `InventoryDb` connection string.
+
+On API startup, EF Core migrations are applied and demo data is inserted only when PostgreSQL is empty. Existing data is left unchanged.
 
 Default connection string shape:
 
@@ -203,6 +360,8 @@ This starts:
 - `inventory-api` at `http://localhost:5258`
 - `postgres` at `localhost:5432`
 
+The API applies migrations and seeds demo inventory data during startup when the database is empty. A reviewer can run Docker Compose, open Swagger, and query the API without manually running import first.
+
 The compose file sets:
 
 - `ASPNETCORE_ENVIRONMENT=Development`
@@ -230,7 +389,7 @@ If running migrations from the host against Docker PostgreSQL, use `Host=localho
 
 ## Sample Workflow
 
-Step 1: Run Docker.
+Step 1: Run Docker Compose.
 
 ```bash
 docker compose up --build
@@ -242,13 +401,21 @@ Step 2: Open Swagger.
 http://localhost:5258/swagger
 ```
 
-Step 3: Run the import endpoint.
+Step 3: Query seeded demo data.
+
+```text
+GET http://localhost:5258/api/products
+GET http://localhost:5258/api/inventory
+GET http://localhost:5258/api/kpis
+```
+
+Step 4: Optionally run the import endpoint to replace demo data with file-based sample data.
 
 ```bash
 curl -X POST http://localhost:5258/api/import/run
 ```
 
-Step 4: Query the API.
+Step 5: Query API again.
 
 ```text
 GET http://localhost:5258/api/products
