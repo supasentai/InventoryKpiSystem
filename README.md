@@ -456,3 +456,48 @@ The API and console app use the sample/runtime data under `InventoryKpiSystem/`.
 - `dotnet build InventoryKpiSystem.sln`
 - `dotnet test InventoryKpiSystem.sln`
 - GitHub Actions CI
+
+## Latest testing
+
+```text
+Restore complete (2.3s)
+  Inventory.Domain net10.0 succeeded (3.5s) → src\Inventory.Domain\bin\Debug\net10.0\Inventory.Domain.dll
+  Inventory.Application net10.0 succeeded (1.5s) → src\Inventory.Application\bin\Debug\net10.0\Inventory.Application.dll
+  Inventory.Infrastructure net10.0 succeeded (2.1s) → src\Inventory.Infrastructure\bin\Debug\net10.0\Inventory.Infrastructure.dll
+  Inventory.Api net10.0 succeeded (6.8s) → src\Inventory.Api\bin\Debug\net10.0\Inventory.Api.dll
+  Inventory.Application.Tests net10.0 succeeded (4.5s) → tests\Inventory.Application.Tests\bin\Debug\net10.0\Inventory.Application.Tests.dll
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.9)
+[xUnit.net 00:00:01.27]   Discovering: Inventory.Application.Tests
+[xUnit.net 00:00:01.33]   Discovered:  Inventory.Application.Tests
+[xUnit.net 00:00:01.36]   Starting:    Inventory.Application.Tests
+     Warning:
+     The component "Fluent Assertions" is governed by the rules defined in the Xceed License Agreement and
+     the Xceed Fluent Assertions Community License. You may use Fluent Assertions free of charge for
+     non-commercial use only. An active subscription is required to use Fluent Assertions for commercial use.
+     Please contact Xceed Sales mailto:sales@xceed.com to acquire a subscription at a very low cost.
+     A paid commercial license supports the development and continued increasing support of
+     Fluent Assertions users under both commercial and community licenses. Help us
+     keep Fluent Assertions at the forefront of unit testing.
+     For more information, visit https://xceed.com/products/unit-testing/fluent-assertions/
+[18:33:10 INF] Starting Inventory API.
+[18:33:12 INF] Application started. Press Ctrl+C to shut down.
+[18:33:12 INF] Hosting environment: Testing
+[18:33:12 INF] Content root path: C:\Users\ADMIN\InventoryKpiSystem\src\Inventory.Api
+[18:33:12 INF] Inventory API started.
+[System] Loaded inventory snapshot with 1543 products.
+[18:33:12 INF] HTTP GET /api/products responded 200 in 212.1569 ms
+[18:33:12 INF] Running database health check.
+[18:33:12 INF] Database health check completed. CanConnect: True
+[18:33:12 INF] HTTP GET /health/db responded 200 in 7.5916 ms
+[18:33:12 INF] HTTP GET /health responded 200 in 2.7262 ms
+[18:33:12 INF] HTTP GET /api/kpis responded 200 in 13.8180 ms
+[18:33:12 INF] HTTP GET /api/inventory responded 200 in 6.5165 ms
+[18:33:12 INF] Application is shutting down...
+[18:33:12 INF] Inventory API shutting down.
+[18:33:12 INF] Inventory API stopped.
+[xUnit.net 00:00:04.02]   Finished:    Inventory.Application.Tests
+  Inventory.Application.Tests test net10.0 succeeded (5.7s)
+
+Test summary: total: 10, failed: 0, succeeded: 10, skipped: 0, duration: 5.7s
+Build succeeded in 26.3s
+```
